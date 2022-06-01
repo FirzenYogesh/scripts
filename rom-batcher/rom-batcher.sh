@@ -13,17 +13,17 @@ askConfirmation() {
 extract() {
     echo "param ${1}"
     case "${1}" in
-    # *.tar.bz2) tar xvjf $1 ;;
-    # *.tar.gz) tar xvzf $1 ;;
-    # *.bz2) bunzip2 $1 ;;
-    # *.rar) rar x $1 ;;
-    # *.gz) gunzip $1 ;;
-    # *.tar) tar xvf $1 ;;
-    # *.tbz2) tar xvjf $1 ;;
-    # *.tgz) tar xvzf $1 ;;
+    *.tar.bz2) tar xvjf "${1}" ;;
+    *.tar.gz) tar xvzf "${1}" ;;
+    *.bz2) bunzip2 "${1}" ;;
+    # *.rar) rar x "${1}" ;;
+    *.gz) gunzip "${1}" ;;
+    *.tar) tar xvf "${1}" ;;
+    *.tbz2) tar xvjf "${1}" ;;
+    *.tgz) tar xvzf "${1}" ;;
     *.zip) unzip -o -d "$(dirname "${1}")" "${1}" ;;
     # *.Z) uncompress $1 ;;
-    # *.7z) 7z x $1 ;;
+    *.7z) 7z x "${1}";;
     *) echo "Unsupported extraction format for ${1}" ;;
     esac
 }
@@ -36,6 +36,8 @@ compressUsingChdman() {
         return 1
     fi
 }
+
+
 
 if askConfirmation "Extract all (zipped) Roms?"; then
     echo "Extracting all(zipped) Roms"
@@ -53,6 +55,7 @@ if askConfirmation "Convert all supported Roms to CHD"; then
     echo "Converting supported files to chd"
     for file in */*.{gdi,cue,iso}; do
         directory=$(dirname "${file}")
+        # checking if the file is placed in either console or emulator folder
         if [[ "${directory}" =~ (.)?(sony)?(\s)?(.|-)?(\s)?(playstation|duckstation|aethersx|pcsx|ps)(\s)?(x|1|2) ]] && [[ "${directory}" =~ (.)?(sega)?(\s)?(.|-)?(\s)?(dreamcast|saturn|flycast|redream) ]]; then
             input="${file}"
             output="${file%.*}.chd"

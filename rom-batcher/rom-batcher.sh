@@ -106,4 +106,5 @@ compress() {
 }
 
 decompress
+
 compress

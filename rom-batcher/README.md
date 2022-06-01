@@ -5,20 +5,20 @@
 - For `debian` and `ubuntu` based OS
 
 ```shell
-apt install git wget curl mame-tools ciso bzip2 unzip p7zip-full rar
+apt install git wget curl mame-tools ciso gzip bzip2 unzip p7zip-full rar
 ```
 
 - You can install via homebrew, get it from [here](https://brew.sh/), once installed run
 
 ```shell
-brew install wget curl rom-tools bzip2 unzip p7zip rar
+brew install wget curl rom-tools gzip bzip2 unzip p7zip rar
 ```
 
 ### MacOS
 You would need homebrew, install it from [here](https://brew.sh/)
 Once installed run the following
 ```shell
-brew install wget curl rom-tools bzip2 unzip p7zip rar
+brew install wget curl rom-tools gzip bzip2 unzip p7zip rar
 ```
 
 ### Android (Termux Setup)

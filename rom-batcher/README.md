@@ -5,7 +5,7 @@
 - For `debian` and `ubuntu` based OS
 
 ```shell
-apt install git wget curl mame-tools bzip2 unzip p7zip-full rar
+apt install git wget curl mame-tools ciso bzip2 unzip p7zip-full rar
 ```
 
 - You can install via homebrew, get it from [here](https://brew.sh/), once installed run

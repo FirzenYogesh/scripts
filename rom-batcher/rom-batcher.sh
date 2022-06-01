@@ -102,7 +102,7 @@ deleteCompressedFiles() {
     convertedFiles=$1
     echo "${convertedFiles}"
     convertedFilesCount="${#convertedFiles[@]}"
-    echo "Converted ${convertedFilesCount}"
+    echo "Total Compressed Files ${convertedFilesCount}"
     if [[ "${convertedFilesCount}" -gt 0 ]]; then
         if askConfirmation "Remove the source roms?"; then
             for file in "${convertedFiles[@]}"; do

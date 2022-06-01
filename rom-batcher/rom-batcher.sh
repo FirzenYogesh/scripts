@@ -41,7 +41,7 @@ decompress() {
 }
 
 cisoCompression() {
-    if ! command -v ciso >/dev/null 2>&1; then
+    if command -v ciso >/dev/null 2>&1; then
         if askConfirmation "Compress all PSP to CSO"; then
             convertedFiles=()
             echo "Converting supported files to chd"
@@ -66,7 +66,7 @@ cisoCompression() {
 }
 
 chdCompression() {
-    if ! command -v chdman >/dev/null 2>&1; then
+    if command -v chdman >/dev/null 2>&1; then
         if askConfirmation "Convert all supported Roms to CHD"; then
             convertedFiles=()
             echo "Converting supported files to chd"

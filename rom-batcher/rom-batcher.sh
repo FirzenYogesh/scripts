@@ -1,5 +1,6 @@
 #! /bin/sh
 
+# Ask the user the confirmation to do things
 askConfirmation() {
     read -p "${1}: (y/N) " -n 1 -r
     echo "" #move to next line
@@ -10,23 +11,79 @@ askConfirmation() {
     fi
 }
 
+# Check if a package exists
+checkIfPackageExists() {
+    if command -v "$1" >/dev/null 2>&1; then
+        return 0
+    else
+        echo "$1 is not installed"
+        return 1
+    fi
+}
+
+# The Extractor
 extract() {
     case "${1}" in
-    *.tar.bz2) tar xvjf "${1}" ;;
-    *.tar.gz) tar xvzf "${1}" ;;
-    *.bz2) bunzip2 "${1}" ;;
-    # *.rar) rar x "${1}" ;;
-    *.gz) gunzip "${1}" ;;
-    *.tar) tar xvf "${1}" ;;
-    *.tbz2) tar xvjf "${1}" ;;
-    *.tgz) tar xvzf "${1}" ;;
-    *.zip) unzip -o -d "$(dirname "${1}")" "${1}" ;;
-    # *.Z) uncompress $1 ;;
-    *.7z) 7z x "${1}" ;;
+    *.tar.bz2)
+        if checkIfPackageExists tar; then
+            tar xvjf "${1}"
+        fi
+        ;;
+    *.tar.gz)
+        if checkIfPageExists tar; then
+            tar xvzf "${1}"
+        fi
+        ;;
+    *.bz2)
+        if checkIfPageExists bunzip2; then
+            bunzip2 "${1}"
+        fi
+        ;;
+    *.rar)
+        if checkIfPageExists rar; then
+            rar x "${1}"
+        fi
+        ;;
+    *.gz)
+        if checkIfPageExists gunzip; then
+            gunzip "${1}"
+        fi
+        ;;
+    *.tar)
+        if checkIfPackageExists tar; then
+            tar xvf "${1}"
+        fi
+        ;;
+    *.tbz2)
+        if checkIfPackageExists tar; then
+            tar xvjf "${1}"
+        fi
+        ;;
+    *.tgz)
+        if checkIfPageExists tar; then
+            tar xvzf "${1}"
+        fi
+        ;;
+    *.zip)
+        if checkIfPageExists unzip; then
+            unzip -o -d "$(dirname "${1}")" "${1}"
+        fi
+        ;;
+    *.Z)
+        if checkIfPageExists uncompress; then
+            uncompress "${1}"
+        fi
+        ;;
+    *.7z)
+        if checkIfPageExists 7z; then
+            7z x "${1}"
+        fi
+        ;;
     *) echo "Unsupported extraction format for ${1}" ;;
     esac
 }
 
+# Entry point for decompression of roms
 decompress() {
     if askConfirmation "Extract all (zipped) Roms?"; then
         echo "Extracting all(zipped) Roms"
@@ -40,8 +97,25 @@ decompress() {
     fi
 }
 
+# Delete the compressed files
+deleteCompressedFiles() {
+    convertedFiles=$1
+    echo "${convertedFiles}"
+    convertedFilesCount="${#convertedFiles[@]}"
+    echo "Converted ${convertedFilesCount}"
+    if [[ "${convertedFilesCount}" -gt 0 ]]; then
+        if askConfirmation "Remove the source roms?"; then
+            for file in "${convertedFiles[@]}"; do
+                rm -f "${file%.*}".{gdi,iso,cue,bin}
+            done
+        fi
+    fi
+
+}
+
+# compress psp iso with ciso
 cisoCompression() {
-    if command -v ciso >/dev/null 2>&1; then
+    if checkIfPackageExists ciso; then
         if askConfirmation "Compress all PSP to CSO"; then
             convertedFiles=()
             echo "Converting supported files to chd"
@@ -59,14 +133,14 @@ cisoCompression() {
                     fi
                 fi
             done
+            deleteCompressedFiles "${convertedFiles[@]}"
         fi
-    else
-        echo "ciso is not installed"
     fi
 }
 
+# compress roms using chdman
 chdCompression() {
-    if command -v chdman >/dev/null 2>&1; then
+    if checkIfPackageExists chdman; then
         if askConfirmation "Convert all supported Roms to CHD"; then
             convertedFiles=()
             echo "Converting supported files to chd"
@@ -81,22 +155,12 @@ chdCompression() {
                     fi
                 fi
             done
-            convertedFilesCount="${#convertedFiles[@]}"
-            echo "Converted ${convertedFilesCount}"
-            if [[ "${convertedFilesCount}" -gt 0 ]]; then
-                echo "${convertedFiles}"
-                if askConfirmation "Remove the source roms?"; then
-                    for file in "${convertedFiles[@]}"; do
-                        rm -f "${file%.*}".{gdi,iso,cue,bin}
-                    done
-                fi
-            fi
+            deleteCompressedFiles "${convertedFiles[@]}"
         fi
-    else
-        echo "chdman is not installed"
     fi
 }
 
+# Entry point for compress
 compress() {
     if askConfirmation "Compress Roms?"; then
         echo "Starting Compression"

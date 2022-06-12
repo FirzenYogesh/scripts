@@ -1,4 +1,10 @@
-#! /bin/sh
+#! /bin/bash
+
+NON_INTERACTIVE=n
+
+showHelp() {
+    
+}
 
 # Ask the user the confirmation to do things
 askConfirmation() {
@@ -168,6 +174,19 @@ compress() {
         chdCompression
     fi
 }
+
+for i in "$@"; do
+    case $i in
+        --non-interactive)
+            NON_INTERACTIVE=Y
+            shift # past argument=value
+            ;;
+        --help)
+            showHelp
+            exit 0
+            ;;
+    esac
+done
 
 decompress
 

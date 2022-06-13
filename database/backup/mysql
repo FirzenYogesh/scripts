@@ -1,17 +1,26 @@
 #! /bin/bash
 
-DOCKER_COMMAND=n
+DOCKER_COMMAND=""
 if [[ "${1}" == "--docker-mode" ]]; then
-    DOCKER_COMMAND=y
+    # Docker command for mysqldump
+    container="mysql"
+    if [[ -n "${2}" ]]; then
+        container="${2}"
+    fi
+    DOCKER_COMMAND="docker exec -i "${container}" /usr/bin/"
 fi
 
-for file in .*.db; do
+for file in config/.*.db; do
     echo "backing up ${file}"
+
+    # Load Config for the current database backup 
     source $file
 
-    if [[ $DOCKER_COMMAND == [Yy] ]]; then
-        docker exec -i mysql /usr/bin/mysqldump --host "${host}"."${domain}" -P "${port}" -u "${user} -p"${password}" -A -R -E --triggers --single-transaction > "${backup}/"${host}"/full_backup.sql
-    else
-        mysqldump --host "${host}"."${domain}" -P "${port}" -u "${user} -p"${password}" -A -R -E --triggers --single-transaction > "${backup}/"${host}"/full_backup.sql
+    # Create the backup folder
+    mkdir -p "${DB_BACKUP_FOLDER}"
+
+    # Execute the mysql dump
+    if "${DOCKER_COMMAND}"/mysqldump --host "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER} -p"${DB_PASSWORD}" -A -R -E --triggers --single-transaction > "${DB_BACKUP_FOLDER}/"${DB_HOST}"/"${DB_BACKUP_FILE}"; then
+        echo "backup complete for ${file}"
     fi
 done

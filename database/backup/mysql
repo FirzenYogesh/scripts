@@ -1,0 +1,17 @@
+#! /bin/bash
+
+DOCKER_COMMAND=n
+if [[ "${1}" == "--docker-mode" ]]; then
+    DOCKER_COMMAND=y
+fi
+
+for file in .*.db; do
+    echo "backing up ${file}"
+    source $file
+
+    if [[ $DOCKER_COMMAND == [Yy] ]]; then
+        docker exec -i mysql /usr/bin/mysqldump --host "${host}"."${domain}" -P "${port}" -u "${user} -p"${password}" -A -R -E --triggers --single-transaction > "${backup}/"${host}"/full_backup.sql
+    else
+        mysqldump --host "${host}"."${domain}" -P "${port}" -u "${user} -p"${password}" -A -R -E --triggers --single-transaction > "${backup}/"${host}"/full_backup.sql
+    fi
+done

@@ -1,19 +1,33 @@
 #! /bin/bash
 
 NON_INTERACTIVE=n
+DELETE_SOURCE_ROMS=n
+POSITIONAL_ARGS=()
 
 showHelp() {
-    
+    printf
+}
+
+isNonInteractive() {
+    if [[ $NON_INTERACTIVE =~ ^[Yy]$ ]]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # Ask the user the confirmation to do things
 askConfirmation() {
-    read -p "${1}: (y/N) " -n 1 -r
-    echo "" #move to next line
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        return 0 # 0 = true
+    if isNonInteractive; then
+        return 0
     else
-        return 1 # 1 = false
+        read -p "${1}: (y/N) " -n 1 -r
+        echo "" #move to next line
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            return 0 # 0 = true
+        else
+            return 1 # 1 = false
+        fi
     fi
 }
 
@@ -175,18 +189,33 @@ compress() {
     fi
 }
 
-for i in "$@"; do
-    case $i in
-        --non-interactive)
-            NON_INTERACTIVE=Y
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -q|--non-interactive)
+            NON_INTERACTIVE=y
             shift # past argument=value
             ;;
-        --help)
+        -h|--help)
             showHelp
             exit 0
             ;;
+        -D|--delete)
+            DELETE_SOURCE_ROMS=y
+            shift
+            ;;
+        -*|--*)
+            echo "Unknown option $1"
+            exit 1
+            ;;
+        *)
+            POSITIONAL_ARGS+=("$1") # save positional arg
+            shift # past argument
+            ;;
     esac
 done
+
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
 
 decompress
 

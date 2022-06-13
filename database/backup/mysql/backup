@@ -20,7 +20,7 @@ for file in config/.*.db; do
     mkdir -p "${DB_BACKUP_FOLDER}"/"${DB_HOST}"
 
     # Execute the mysql dump
-    if "${DOCKER_COMMAND}"mysqldump --host "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER} -p"${DB_PASSWORD}" -A -R -E --triggers --single-transaction > "${DB_BACKUP_FOLDER}/"${DB_HOST}"/"${DB_BACKUP_FILE}"; then
+    if eval "${DOCKER_COMMAND}"mysqldump --host "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER} -p"${DB_PASSWORD}" -A -R -E --triggers --single-transaction > "${DB_BACKUP_FOLDER}/"${DB_HOST}"/"${DB_BACKUP_FILE}"; then
         echo "backup complete for ${file}"
     fi
 done

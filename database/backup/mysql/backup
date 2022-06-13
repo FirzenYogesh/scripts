@@ -17,7 +17,7 @@ for file in config/.*.db; do
     source $file
 
     # Create the backup folder
-    mkdir -p $DB_BACKUP_FOLDER
+    mkdir -p "${DB_BACKUP_FOLDER}"/"${DB_HOST}"
 
     # Execute the mysql dump
     if "${DOCKER_COMMAND}"mysqldump --host "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER} -p"${DB_PASSWORD}" -A -R -E --triggers --single-transaction > "${DB_BACKUP_FOLDER}/"${DB_HOST}"/"${DB_BACKUP_FILE}"; then

@@ -3,4 +3,4 @@ DB_PORT=3306
 DB_USER=user
 DB_PASSWORD=password
 DB_BACKUP_FOLDER="~/backup/mysql"
-DB_BACKUP_FILE="full_backup.sql"
+DB_BACKUP_FILE="full_backup"

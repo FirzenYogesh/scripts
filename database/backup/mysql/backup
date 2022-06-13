@@ -10,6 +10,9 @@ if [[ "${1}" == "--docker-mode" ]]; then
     DOCKER_COMMAND="docker exec -i "${container}" /usr/bin/"
 fi
 
+# Get current date
+now="$(date +'%Y_%m_%d_%H_%M_%S')"
+
 for file in config/.*.db; do
     echo "backing up ${file}"
 
@@ -19,8 +22,6 @@ for file in config/.*.db; do
     # Create the backup folder
     mkdir -p "${DB_BACKUP_FOLDER}"/"${DB_HOST}"
 
-    # Get current data
-    now="$(date +'%Y_%m_%d_%H_%M_%S')"
     # Execute the mysql dump
     if eval "${DOCKER_COMMAND}"mysqldump --host "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER} -p"${DB_PASSWORD}" -A -R -E --triggers --single-transaction > "${DB_BACKUP_FOLDER}/"${DB_HOST}"/"${DB_BACKUP_FILE}"_"${now}".sql; then
         echo "backup complete for ${file}"

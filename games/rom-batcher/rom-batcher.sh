@@ -1,6 +1,7 @@
 #! /bin/bash
 
 NON_INTERACTIVE=n
+DELETE_SOURCE_ARCHIVES=n
 DELETE_SOURCE_ROMS=n
 POSITIONAL_ARGS=()
 
@@ -104,15 +105,16 @@ extract() {
 }
 
 # Entry point for decompression of roms
-decompress() {
+extractArchive() {
     if askConfirmation "Extract all (zipped) Roms?"; then
         echo "Extracting all(zipped) Roms"
         # find all archives in 3 sub folder depth
         # example ./game.zip ./console/game.zip ./manufacturer/console/game.zip
-        find . -type f -name "*.zip" -maxdepth 3 | while read -r filename; do extract "${filename}"; done
+        findCommand='find . -type f \( -iname "*.zip" -o -iname "*.7z" \) -maxdepth 3'
+        eval "${findCommand}" | while read -r filename; do extract "${filename}"; done
         # delete the source files
-        if askConfirmation "Remove the source archives?"; then
-            find . -type f -name "*.zip" -maxdepth 3 -delete
+        if [[ $DELETE_SOURCE_ARCHIVES =~ ^[Yy]$ ]] || askConfirmation "Remove the source archives?"; then
+            eval "${findCommand}" -delete
         fi
     fi
 }
@@ -124,13 +126,12 @@ deleteCompressedFiles() {
     convertedFilesCount="${#convertedFiles[@]}"
     echo "Total Compressed Files ${convertedFilesCount}"
     if [[ "${convertedFilesCount}" -gt 0 ]]; then
-        if askConfirmation "Remove the source roms?"; then
+        if [[ $DELETE_SOURCE_ROMS =~ ^[Yy]$ ]] || askConfirmation "Remove the source roms?"; then
             for file in "${convertedFiles[@]}"; do
                 rm -f "${file%.*}".{gdi,iso,cue,bin}
             done
         fi
     fi
-
 }
 
 # compress psp iso with ciso
@@ -181,7 +182,7 @@ chdCompression() {
 }
 
 # Entry point for compress
-compress() {
+compressRoms() {
     if askConfirmation "Compress Roms?"; then
         echo "Starting Compression"
         cisoCompression
@@ -191,32 +192,35 @@ compress() {
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -q|--non-interactive)
-            NON_INTERACTIVE=y
-            shift # past argument=value
-            ;;
-        -h|--help)
-            showHelp
-            exit 0
-            ;;
-        -D|--delete)
-            DELETE_SOURCE_ROMS=y
-            shift
-            ;;
-        -*|--*)
-            echo "Unknown option $1"
-            exit 1
-            ;;
-        *)
-            POSITIONAL_ARGS+=("$1") # save positional arg
-            shift # past argument
-            ;;
+    -q | --non-interactive)
+        NON_INTERACTIVE=y
+        shift # past argument=value
+        ;;
+    -h | --help)
+        showHelp
+        exit 0
+        ;;
+    --delete-source-roms)
+        DELETE_SOURCE_ROMS=y
+        shift
+        ;;
+    --delete-source-archives)
+        DELETE_SOURCE_ARCHIVES=y
+        shift
+        ;;
+    -* | --*)
+        echo "Unknown option $1"
+        exit 1
+        ;;
+    *)
+        POSITIONAL_ARGS+=("$1") # save positional arg
+        shift                   # past argument
+        ;;
     esac
 done
 
-
 set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
 
-decompress
+extractArchive
 
-compress
+compressRoms

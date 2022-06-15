@@ -52,7 +52,7 @@ for file in .*.db; do
     mkdir -p "${backupDir}"
 
     # Execute the mongo dump
-    if eval "${DOCKER_COMMAND}"mongodump --host="${MONGODB_HOST}" --port="${MONGODB_PORT}" --username="${MONGODB_USER}" --password="${MONGODB_PASSWORD}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" >"${backupDir}"/"${MONGODB_BACKUP_FILE}"_"${now}".mongodump; then
+    if eval "${DOCKER_COMMAND}"mongodump --host="${MONGODB_HOST}" --port="${MONGODB_PORT}" --username="${MONGODB_USER}" --password="${MONGODB_PASSWORD}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE} --archive" >"${backupDir}"/"${MONGODB_BACKUP_FILE}"_"${now}".mongodump; then
         echo "backup complete for ${file}"
     fi
 

@@ -166,10 +166,19 @@ cisoCompression() {
             fi
         done
         shopt -u nocasematch
-        if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Compress all PSP to CSO"; then
+        if [[ "${#eligibleFiles[@]}" -gt 0 ]]; then
             echo "There are totally ${#eligibleFiles[@]} files eligible for conversion"
+            echo ""
+            for file in "${eligibleFiles[@]}"; do
+                echo "${file}"
+            done
+        else
+            echo "Could not find any eligible files for conversion"
+        fi
+        echo ""
+        if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Compress all eligible PSP ISO ROMS to CSO"; then
             convertedFiles=()
-            echo "Converting supported files to cso"
+            echo "Converting eligible files to cso"
             #for file in */*.{gdi,cue,iso}; do
             for file in "${eligibleFiles[@]}"; do
                 input="${file}"
@@ -208,7 +217,17 @@ chdCompression() {
             fi
         done
         shopt -u nocasematch
-        if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Convert all supported Roms to CHD"; then
+        if [[ "${#eligibleFiles[@]}" -gt 0 ]]; then
+            echo "There are totally ${#eligibleFiles[@]} files eligible for conversion"
+            echo ""
+            for file in "${eligibleFiles[@]}"; do
+                echo "${file}"
+            done
+        else
+            echo "Could not find any eligible files for conversion"
+        fi
+        echo ""
+        if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Convert all eligible ISO/GDI/CUE ROMS to CHD"; then
             echo "There are totally ${#eligibleFiles[@]} files eligible for conversion"
             convertedFiles=()
             echo "Converting supported files to chd"

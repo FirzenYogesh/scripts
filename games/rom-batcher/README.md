@@ -48,7 +48,7 @@ cd /path/to/roms
 The script is interactive, to get started please run this command and follow the on screen instructions
 
 ```shell
-bash <(curl -s https://raw.githubusercontent.com/FirzenYogesh/game-scripts/main/rom-batcher/rom-batcher.sh)
+bash <(curl -s https://raw.githubusercontent.com/FirzenYogesh/scripts/main/games/rom-batcher/rom-batcher.sh)
 ```
 
 ### Extraction

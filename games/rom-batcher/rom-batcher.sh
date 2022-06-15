@@ -149,33 +149,39 @@ deleteCompressedFiles() {
 # compress psp iso with ciso
 cisoCompression() {
     if checkIfPackageExists ciso; then
-        if askConfirmation "Compress all PSP to CSO"; then
+        echo "Checking if any files are eligible for conversion for CSO"
+        files=$(find . -type f -iname "*.iso")
+        eligibleFiles=()
+        shopt -s nocasematch
+        for file in $files; do
+            directory=$(dirname "${file}")
+            if [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-|/)?(\ )?(playstation|ppssp|ps)(\ )?(p|portable) ]]; then
+                eligibleFiles+=("${file}")
+            fi
+        done
+        shopt -u nocasematch
+        if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Compress all PSP to CSO"; then
+            echo "There are totally ${#eligibleFiles[@]} files eligible for conversion"
             convertedFiles=()
-            echo "Converting supported files to chd"
-            shopt -s nocasematch
+            echo "Converting supported files to cso"
             #for file in */*.{gdi,cue,iso}; do
-            files=$(find . -type f -iname "*.iso")
-            for file in $files; do
-                directory=$(dirname "${file}")
-                if [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-|/)?(\ )?(playstation|ppssp|ps)(\ )?(p|portable) ]]; then
-                    input="${file}"
-                    output="${file%.*}.cso"
-                    echo "Converting ${input} to ${output}"
-                    if [[ -f "${output}" ]]; then
-                        echo "${output} exists skipping conversion"
+            for file in "${eligibleFiles[@]}"; do
+                input="${file}"
+                output="${file%.*}.cso"
+                echo "Converting ${input} to ${output}"
+                if [[ -f "${output}" ]]; then
+                    echo "${output} exists skipping conversion"
+                    convertedFiles+=("${input}")
+                else
+                    read -p "Enter the compression value (0-9): [default=5]" -n 1 -r compressionLevel
+                    if [[ ! "${compressionLevel}" =~ [0-9] ]]; then
+                        compressionLevel=5
+                    fi
+                    if chdman ciso "${compressionLevel}" "${input}" "${output}"; then
                         convertedFiles+=("${input}")
-                    else
-                        read -p "Enter the compression value (0-9): [default=5]" -n 1 -r compressionLevel
-                        if [[ ! "${compressionLevel}" =~ [0-9] ]]; then
-                            compressionLevel=5
-                        fi
-                        if chdman ciso "${compressionLevel}" "${input}" "${output}"; then
-                            convertedFiles+=("${input}")
-                        fi
                     fi
                 fi
             done
-            shopt -u nocasematch
             deleteCompressedFiles "${convertedFiles[@]}"
         fi
     fi
@@ -184,30 +190,40 @@ cisoCompression() {
 # compress roms using chdman
 chdCompression() {
     if checkIfPackageExists chdman; then
-        if askConfirmation "Convert all supported Roms to CHD"; then
+        echo "Checking if any files are eligible for conversion for CHD"
+        files=$(find . -type f \( -iname "*.gdi" -o -iname "*.cue" -o -iname "*.iso" \))
+        eligibleFiles=()
+        shopt -s nocasematch
+        for file in $files; do
+            directory=$(dirname "${file}")
+            # checking if the file is placed in either console or emulator folder
+            if ! [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-|/)?(\ )?(playstation|ppssp|ps)(\ )?(p|portable) ]] && { [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-)?(\ )?(playstation|duckstation|aethersx|pcsx|ps)(\ )?(x|1|2) ]] || [[ "${directory}" =~ (.)?(sega)?(\ )?(.|-)?(\ )?(dreamcast|saturn|flycast|redream) ]]; }; then
+                eligibleFiles+=("${file}")
+            fi
+        done
+
+        shopt -u nocasematch
+        if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Convert all supported Roms to CHD"; then
+            echo "There are totally ${#eligibleFiles[@]} files eligible for conversion"
             convertedFiles=()
             echo "Converting supported files to chd"
-            shopt -s nocasematch
             #for file in */*.{gdi,cue,iso}; do
-            files=$(find . -type f \( -iname "*.gdi" -o -iname "*.cue" -o -iname "*.iso" \))
-            for file in $files; do
+
+            for file in "${eligibleFiles[@]}"; do
                 directory=$(dirname "${file}")
-                # checking if the file is placed in either console or emulator folder
-                if ! [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-|/)?(\ )?(playstation|ppssp|ps)(\ )?(p|portable) ]] && { [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-)?(\ )?(playstation|duckstation|aethersx|pcsx|ps)(\ )?(x|1|2) ]] || [[ "${directory}" =~ (.)?(sega)?(\ )?(.|-)?(\ )?(dreamcast|saturn|flycast|redream) ]]; }; then
-                    input="${file}"
-                    output="${file%.*}.chd"
-                    echo "Converting ${input} to ${output}"
-                    if [[ -f "${output}" ]]; then
-                        echo "${output} exists skipping conversion"
+                input="${file}"
+                output="${file%.*}.chd"
+                echo "Converting ${input} to ${output}"
+                if [[ -f "${output}" ]]; then
+                    echo "${output} exists skipping conversion"
+                    convertedFiles+=("${input}")
+                else
+                    if chdman createcd -i "${input}" -o "${output}"; then
                         convertedFiles+=("${input}")
-                    else
-                        if chdman createcd -i "${input}" -o "${output}"; then
-                            convertedFiles+=("${input}")
-                        fi
                     fi
                 fi
             done
-            shopt -u nocasematch
+
             deleteCompressedFiles "${convertedFiles[@]}"
         fi
     fi

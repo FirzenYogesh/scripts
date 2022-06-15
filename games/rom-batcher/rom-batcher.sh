@@ -145,7 +145,7 @@ cisoCompression() {
             echo "Converting supported files to chd"
             for file in */*.{gdi,cue,iso}; do
                 directory=$(dirname "${file}")
-                if [[ "${directory}" =~ (.)?(sony)?(\s)?(.|-)?(\s)?(playstation|ppssp|ps)(\s)?(p|portable) ]]; then
+                if [[ "${directory}" =~ (.)?(sony)?(\s)?(.|-)?(\s)?(playstation|ppssp|ps)(\s)?(p|portable)* ]]; then
                     input="${file}"
                     output="${file%.*}.cso"
                     read -p "Enter the compression value (0-9): [default=5]" -n 1 -r compressionLevel
@@ -171,7 +171,7 @@ chdCompression() {
             for file in */*.{gdi,cue,iso}; do
                 directory=$(dirname "${file}")
                 # checking if the file is placed in either console or emulator folder
-                if [[ "${directory}" =~ (.)?(sony)?(\s)?(.|-)?(\s)?(playstation|duckstation|aethersx|pcsx|ps)(\s)?(x|1|2) ]] && [[ "${directory}" =~ (.)?(sega)?(\s)?(.|-)?(\s)?(dreamcast|saturn|flycast|redream) ]]; then
+                if ! [[ "${directory}" =~ (.)?(sony)?(\s)?(.|-)?(\s)?(playstation|ppssp|ps)(\s)?(p|portable)* ]] && { [[ "${directory}" =~ (.)?(sony)?(\s)?(.|-)?(\s)?(playstation|duckstation|aethersx|pcsx|ps)(\s)?(x|1|2)* ]] || [[ "${directory}" =~ (.)?(sega)?(\s)?(.|-)?(\s)?(dreamcast|saturn|flycast|redream) ]]; }; then
                     input="${file}"
                     output="${file%.*}.chd"
                     if chdman createcd -i "${input}" -o "${output}"; then

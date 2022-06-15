@@ -3,6 +3,7 @@
 NON_INTERACTIVE=n
 DELETE_SOURCE_ARCHIVES=n
 DELETE_SOURCE_ROMS=n
+CURRENT_WORKING_DIR=.
 POSITIONAL_ARGS=()
 
 showHelp() {
@@ -208,6 +209,10 @@ while [[ $# -gt 0 ]]; do
         DELETE_SOURCE_ARCHIVES=y
         shift
         ;;
+    --roms-dir)
+        CURRENT_WORKING_DIR="${i#*=}"
+        shift
+        ;;
     -* | --*)
         echo "Unknown option $1"
         exit 1
@@ -220,6 +225,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+cd "$CURRENT_WORKING_DIR" || exit 1
+dir=$(pwd)
+
+echo "Selected Roms Directory - ${dir}"
 
 extractArchive
 

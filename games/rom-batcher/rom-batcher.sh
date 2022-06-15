@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 NON_INTERACTIVE=n
 DELETE_SOURCE_ARCHIVES=n

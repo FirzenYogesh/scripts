@@ -117,16 +117,19 @@ extract() {
     esac
 }
 
-listEligibleFiles() {
-    files=$1
+listFiles() {
+    message="${1}"
+    shift
+    errorMessage="${1}"
+    shift
+    files=("$@")
     if [[ "${#files[@]}" -gt 0 ]]; then
-        echo "There are totally ${#files[@]} files eligible for ${2}"
-        echo ""
+        echo "There are totally ${#files[@]} files ${message}"
         for file in "${files[@]}"; do
             echo "${file}"
         done
     else
-        echo "Could not find any eligible files for ${2}"
+        echo "${errorMessage}"
     fi
     echo ""
 }
@@ -137,7 +140,7 @@ extractArchive() {
     # find all archives in 3 sub folder depth
     # example ./game.zip ./console/game.zip ./manufacturer/console/game.zip
     mapfile -t files < <(find . -maxdepth "${MAX_DEPTH_FOR_ROMS}" -type f \( -iname "*.zip" -o -iname "*.7z" \))
-    listEligibleFiles "${files[@]}" "extraction"
+    listFiles "eligible for extraction" "No files available for extraction" "${files[@]}"
     if [[ "${#files[@]}" -gt 0 ]] && askConfirmation "Extract all (zipped) Roms?"; then
         echo "Extracting all archived Roms"
         for file in "${files[@]}"; do
@@ -154,16 +157,17 @@ extractArchive() {
 
 # Delete the compressed files
 deleteCompressedFiles() {
-    convertedFiles=$1
-    echo "${convertedFiles}"
+    convertedFiles=("$@")
+    listFiles "converted" "No files were converted" "${convertedFiles[@]}"
     convertedFilesCount="${#convertedFiles[@]}"
-    echo "Total Compressed Files ${convertedFilesCount}"
     if [[ "${convertedFilesCount}" -gt 0 ]]; then
-        if (isNonInteractive && [[ $DELETE_SOURCE_ROMS =~ ^[Yy]$ ]]) || askConfirmation "Remove the source roms?"; then
+        if (isNonInteractive && [[ $DELETE_SOURCE_ROMS =~ ^[Yy]$ ]]) || askConfirmation "Remove these source roms?"; then
             for file in "${convertedFiles[@]}"; do
                 rm -f "${file%.*}".{gdi,iso,cue,bin}
             done
         fi
+    else
+        echo "No files were converted"
     fi
 }
 
@@ -181,7 +185,7 @@ cisoCompression() {
             fi
         done
         shopt -u nocasematch
-        listEligibleFiles "${eligibleFiles[@]}" "ISO to CSO"
+        listFiles "eligible for ISO to CSO Conversion" "No files available for ISO to CSO Conversion" "${eligibleFiles[@]}"
         if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Compress all eligible PSP ISO ROMS to CSO"; then
             convertedFiles=()
             echo "Converting eligible files to cso"
@@ -223,13 +227,11 @@ chdCompression() {
             fi
         done
         shopt -u nocasematch
-        listEligibleFiles "${eligibleFiles[@]}" "ISO/GDI/CUE to CHD"
+        listFiles "eligible for ISO/GDI/CUE to CHD Conversion" "No files available for ISO/GDI/CUE to CHD Conversion" "${eligibleFiles[@]}"
         if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Convert all eligible ISO/GDI/CUE ROMS to CHD"; then
             echo "There are totally ${#eligibleFiles[@]} files eligible for conversion"
             convertedFiles=()
             echo "Converting supported files to chd"
-            #for file in */*.{gdi,cue,iso}; do
-
             for file in "${eligibleFiles[@]}"; do
                 directory=$(dirname "${file}")
                 input="${file}"

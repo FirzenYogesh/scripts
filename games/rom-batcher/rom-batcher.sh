@@ -97,8 +97,10 @@ extract() {
         fi
         ;;
     *.7z)
+        assumeYes=""
+        if isNonInteractive; then assumeYes="-y"; fi
         if checkIfPackageExists 7z; then
-            7z x "${1}" -o"$(dirname "${1}")"
+            7z x "${1}" -o"$(dirname "${1}")" "${assumeYes}"
         fi
         ;;
     *) echo "Unsupported extraction format for ${1}" ;;

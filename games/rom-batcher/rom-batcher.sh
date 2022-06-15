@@ -1,5 +1,6 @@
 #!/bin/bash
 
+MAX_DEPTH_FOR_ROMS=3
 NON_INTERACTIVE=n
 DELETE_SOURCE_ARCHIVES=n
 DELETE_SOURCE_ROMS=n
@@ -118,15 +119,20 @@ extract() {
 
 # Entry point for decompression of roms
 extractArchive() {
+    echo "Checking if any files are eligible for extraction"
+    # find all archives in 3 sub folder depth
+    # example ./game.zip ./console/game.zip ./manufacturer/console/game.zip
+    mapfile -t files < <(find . -maxdepth "${MAX_DEPTH_FOR_ROMS}" -type f \( -iname "*.zip" -o -iname "*.7z" \))
     if askConfirmation "Extract all (zipped) Roms?"; then
         echo "Extracting all(zipped) Roms"
-        # find all archives in 3 sub folder depth
-        # example ./game.zip ./console/game.zip ./manufacturer/console/game.zip
-        findCommand='find . -maxdepth 3 -type f \( -iname "*.zip" -o -iname "*.7z" \)'
-        eval "${findCommand}" | while read -r filename; do extract "${filename}"; done
+        for file in "${files[@]}"; do
+            extract "${file}"
+        done
         # delete the source files
         if (isNonInteractive && [[ $DELETE_SOURCE_ARCHIVES =~ ^[Yy]$ ]]) || askConfirmation "Remove the source archives?"; then
-            eval "${findCommand}" -delete
+            for file in "${files[@]}"; do
+                rm -f "${file}"
+            done
         fi
     fi
 }
@@ -150,7 +156,7 @@ deleteCompressedFiles() {
 cisoCompression() {
     if checkIfPackageExists ciso; then
         echo "Checking if any files are eligible for conversion for CSO"
-        mapfile -t files < <(find . -type f \( -iname "*.iso" \))
+        mapfile -t files < <(find . -maxdepth "${MAX_DEPTH_FOR_ROMS}" -type f \( -iname "*.iso" \))
         eligibleFiles=()
         shopt -s nocasematch
         for file in "${files[@]}"; do
@@ -191,7 +197,7 @@ cisoCompression() {
 chdCompression() {
     if checkIfPackageExists chdman; then
         echo "Checking if any files are eligible for conversion for CHD"
-        mapfile -t files < <(find . -type f \( -iname "*.gdi" -o -iname "*.cue" -o -iname "*.iso" \))
+        mapfile -t files < <(find . -maxdepth "${MAX_DEPTH_FOR_ROMS}" -type f \( -iname "*.gdi" -o -iname "*.cue" -o -iname "*.iso" \))
         eligibleFiles=()
         shopt -s nocasematch
         for file in "${files[@]}"; do

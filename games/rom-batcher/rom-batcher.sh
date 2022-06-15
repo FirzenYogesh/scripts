@@ -189,7 +189,10 @@ cisoCompression() {
         if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Compress all eligible PSP ISO ROMS to CSO"; then
             convertedFiles=()
             echo "Converting eligible files to cso"
-            #for file in */*.{gdi,cue,iso}; do
+            compressionLevel=5
+            if ! isNonInteractive; then
+                read -p "Enter the compression value (0-9) [default=5]: " -n 1 -r compressionLevel
+            fi
             for file in "${eligibleFiles[@]}"; do
                 input="${file}"
                 output="${file%.*}.cso"
@@ -198,7 +201,6 @@ cisoCompression() {
                     echo "${output} exists skipping conversion"
                     convertedFiles+=("${input}")
                 else
-                    read -p "Enter the compression value (0-9) [default=5]: " -n 1 -r compressionLevel
                     if [[ ! "${compressionLevel}" =~ [0-9] ]]; then
                         compressionLevel=5
                     fi

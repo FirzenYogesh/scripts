@@ -150,10 +150,10 @@ deleteCompressedFiles() {
 cisoCompression() {
     if checkIfPackageExists ciso; then
         echo "Checking if any files are eligible for conversion for CSO"
-        files=$(find . -type f -iname "*.iso")
+        mapfile -t files < <(find . -type f \( -iname "*.iso" \))
         eligibleFiles=()
         shopt -s nocasematch
-        for file in $files; do
+        for file in "${files[@]}"; do
             directory=$(dirname "${file}")
             if [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-|/)?(\ )?(playstation|ppssp|ps)(\ )?(p|portable) ]]; then
                 eligibleFiles+=("${file}")
@@ -191,17 +191,16 @@ cisoCompression() {
 chdCompression() {
     if checkIfPackageExists chdman; then
         echo "Checking if any files are eligible for conversion for CHD"
-        files=$(find . -type f \( -iname "*.gdi" -o -iname "*.cue" -o -iname "*.iso" \))
+        mapfile -t files < <(find . -type f \( -iname "*.gdi" -o -iname "*.cue" -o -iname "*.iso" \))
         eligibleFiles=()
         shopt -s nocasematch
-        for file in $files; do
+        for file in "${files[@]}"; do
             directory=$(dirname "${file}")
             # checking if the file is placed in either console or emulator folder
             if ! [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-|/)?(\ )?(playstation|ppssp|ps)(\ )?(p|portable) ]] && { [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-)?(\ )?(playstation|duckstation|aethersx|pcsx|ps)(\ )?(x|1|2) ]] || [[ "${directory}" =~ (.)?(sega)?(\ )?(.|-)?(\ )?(dreamcast|saturn|flycast|redream) ]]; }; then
                 eligibleFiles+=("${file}")
             fi
         done
-
         shopt -u nocasematch
         if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Convert all supported Roms to CHD"; then
             echo "There are totally ${#eligibleFiles[@]} files eligible for conversion"

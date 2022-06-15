@@ -151,8 +151,9 @@ cisoCompression() {
                 if [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-|/)?(\ )?(playstation|ppssp|ps)(\ )?(p|portable) ]]; then
                     input="${file}"
                     output="${file%.*}.cso"
-                    if [[ -f "$output" ]]; then
-                        echo "$output exists skipping conversion"
+                    echo "Converting ${input} to ${output}"
+                    if [[ -f "${output}" ]]; then
+                        echo "${output} exists skipping conversion"
                         convertedFiles+=("${input}")
                     else
                         read -p "Enter the compression value (0-9): [default=5]" -n 1 -r compressionLevel
@@ -186,8 +187,9 @@ chdCompression() {
                 if ! [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-|/)?(\ )?(playstation|ppssp|ps)(\ )?(p|portable) ]] && { [[ "${directory}" =~ (.)?(sony)?(\ )?(.|-)?(\ )?(playstation|duckstation|aethersx|pcsx|ps)(\ )?(x|1|2) ]] || [[ "${directory}" =~ (.)?(sega)?(\ )?(.|-)?(\ )?(dreamcast|saturn|flycast|redream) ]]; }; then
                     input="${file}"
                     output="${file%.*}.chd"
-                    if [[ -f "$output" ]]; then
-                        echo "$output exists skipping conversion"
+                    echo "Converting ${input} to ${output}"
+                    if [[ -f "${output}" ]]; then
+                        echo "${output} exists skipping conversion"
                         convertedFiles+=("${input}")
                     else
                         if chdman createcd -i "${input}" -o "${output}"; then

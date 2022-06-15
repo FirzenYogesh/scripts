@@ -1,6 +1,7 @@
 #!/bin/bash
 
 MAX_DEPTH_FOR_ROMS=3
+CISO_COMPRESSION_LEVEL=5
 NON_INTERACTIVE=n
 DELETE_SOURCE_ARCHIVES=n
 DELETE_SOURCE_ROMS=n
@@ -14,6 +15,7 @@ showHelp() {
     echo ""
     echo "<options>"
     echo "      --roms-dir=</path/to/roms>  -   The path where the roms are stored, if not specified it will use the current directory where the script was executed"
+    echo "      --ciso-compression-level    -   The compression level to use when using ciso, if not specified it will use 5 by default"
     echo "  -h, --help                      -   Shows this help menu"
     echo "  -q, --non-interactive           -   Executes this script quitely or non-interactively"
     echo "      --delete-source-roms        -   Deletes the source roms after compression or conversion (works only on non interactive mode)"
@@ -189,7 +191,7 @@ cisoCompression() {
         if [[ "${#eligibleFiles[@]}" -gt 0 ]] && askConfirmation "Compress all eligible PSP ISO ROMS to CSO"; then
             convertedFiles=()
             echo "Converting eligible files to cso"
-            compressionLevel=5
+            compressionLevel="${CISO_COMPRESSION_LEVEL}"
             if ! isNonInteractive; then
                 read -p "Enter the compression value (0-9) [default=5]: " -n 1 -r compressionLevel
             fi
@@ -202,6 +204,7 @@ cisoCompression() {
                     convertedFiles+=("${input}")
                 else
                     if [[ ! "${compressionLevel}" =~ [0-9] ]]; then
+                        # in case if the value is not matching a number then switch to a default value
                         compressionLevel=5
                     fi
                     if ciso "${compressionLevel}" "${input}" "${output}"; then
@@ -290,6 +293,10 @@ for i in "$@"; do
         CURRENT_WORKING_DIR="${i#*=}"
         shift
         ;;
+    --ciso-compression-level=*)
+            CISO_COMPRESSION_LEVEL="${i#*=}"
+            shift
+            ;;
     -* | --*)
         echo "Unknown option $1"
         exit 1

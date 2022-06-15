@@ -8,7 +8,9 @@ POSITIONAL_ARGS=()
 
 showHelp() {
     echo "Rom Batcher - Batch Job your ROMs Management"
+    echo ""
     echo "Usage: rom-batcher [<options>...]"
+    echo ""
     echo "<options>"
     echo "      --roms-dir=</path/to/roms>  -   The path where the roms are stored, if not specified it will use the current directory where the script was executed"
     echo "  -h, --help                      -   Shows this help menu"

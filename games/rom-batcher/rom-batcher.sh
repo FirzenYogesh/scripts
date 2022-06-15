@@ -209,7 +209,7 @@ while [[ $# -gt 0 ]]; do
         DELETE_SOURCE_ARCHIVES=y
         shift
         ;;
-    --roms-dir)
+    --roms-dir=*)
         CURRENT_WORKING_DIR="${i#*=}"
         shift
         ;;

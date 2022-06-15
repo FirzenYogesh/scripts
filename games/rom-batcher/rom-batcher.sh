@@ -16,8 +16,8 @@ showHelp() {
     echo "      --roms-dir=</path/to/roms>  -   The path where the roms are stored, if not specified it will use the current directory where the script was executed"
     echo "  -h, --help                      -   Shows this help menu"
     echo "  -q, --non-interactive           -   Executes this script quitely or non-interactively"
-    echo "      --delete-source-roms        -   Deletes the source roms after compression or conversion"
-    echo "      --delete-source-archives    -   Deletes the source archives after extraction"
+    echo "      --delete-source-roms        -   Deletes the source roms after compression or conversion (works only on non interactive mode)"
+    echo "      --delete-source-archives    -   Deletes the source archives after extraction (works only on non interactive mode)"
 }
 
 isNonInteractive() {
@@ -123,7 +123,7 @@ extractArchive() {
     # find all archives in 3 sub folder depth
     # example ./game.zip ./console/game.zip ./manufacturer/console/game.zip
     mapfile -t files < <(find . -maxdepth "${MAX_DEPTH_FOR_ROMS}" -type f \( -iname "*.zip" -o -iname "*.7z" \))
-    if askConfirmation "Extract all (zipped) Roms?"; then
+    if [[ "${#files[@]}" -gt 0 ]] && askConfirmation "Extract all (zipped) Roms?"; then
         echo "Extracting all(zipped) Roms"
         for file in "${files[@]}"; do
             extract "${file}"

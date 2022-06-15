@@ -7,7 +7,14 @@ CURRENT_WORKING_DIR=.
 POSITIONAL_ARGS=()
 
 showHelp() {
-    printf
+    echo "Rom Batcher - Batch Job your ROMs Management"
+    echo "Usage: rom-batcher [<options>...]"
+    echo "<options>"
+    echo "      --roms-dir=</path/to/roms>  -   The path where the roms are stored, if not specified it will use the current directory where the script was executed"
+    echo "  -h, --help                      -   Shows this help menu"
+    echo "  -q, --non-interactive           -   Executes this script quitely or non-interactively"
+    echo "      --delete-source-roms        -   Deletes the source roms after compression or conversion"
+    echo "      --delete-source-archives    -   Deletes the source archives after extraction"
 }
 
 isNonInteractive() {

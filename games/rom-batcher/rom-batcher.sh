@@ -98,7 +98,7 @@ extract() {
         ;;
     *.7z)
         if checkIfPackageExists 7z; then
-            7z x "${1}"
+            7z x "${1}" -o"$(dirname "${1}")"
         fi
         ;;
     *) echo "Unsupported extraction format for ${1}" ;;

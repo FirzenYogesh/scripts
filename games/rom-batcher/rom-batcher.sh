@@ -113,7 +113,7 @@ extractArchive() {
         findCommand='find . -maxdepth 3 -type f \( -iname "*.zip" -o -iname "*.7z" \)'
         eval "${findCommand}" | while read -r filename; do extract "${filename}"; done
         # delete the source files
-        if [[ $DELETE_SOURCE_ARCHIVES =~ ^[Yy]$ ]] || askConfirmation "Remove the source archives?"; then
+        if (isNonInteractive && [[ $DELETE_SOURCE_ARCHIVES =~ ^[Yy]$ ]]) || askConfirmation "Remove the source archives?"; then
             eval "${findCommand}" -delete
         fi
     fi
@@ -126,7 +126,7 @@ deleteCompressedFiles() {
     convertedFilesCount="${#convertedFiles[@]}"
     echo "Total Compressed Files ${convertedFilesCount}"
     if [[ "${convertedFilesCount}" -gt 0 ]]; then
-        if [[ $DELETE_SOURCE_ROMS =~ ^[Yy]$ ]] || askConfirmation "Remove the source roms?"; then
+        if (isNonInteractive && [[ $DELETE_SOURCE_ROMS =~ ^[Yy]$ ]]) || askConfirmation "Remove the source roms?"; then
             for file in "${convertedFiles[@]}"; do
                 rm -f "${file%.*}".{gdi,iso,cue,bin}
             done

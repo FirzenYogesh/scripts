@@ -46,17 +46,17 @@ for file in .*.db; do
     # Load Config for the current database mysql-backup
     source "${file}"
 
-    backupDir="${DB_BACKUP_FOLDER}"/"${DB_HOST}"
+    backupDir="${MYSQL_BACKUP_FOLDER}"/"${MYSQL_HOST}"
 
     # Create the mysql-backup folder
     mkdir -p "${backupDir}"
 
     # Execute the mysql dump
-    if eval "${DOCKER_COMMAND}"mysqldump --host "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -A -R -E --triggers --single-transaction >"${backupDir}"/"${DB_BACKUP_FILE}"_"${now}".sql; then
+    if eval "${DOCKER_COMMAND}"mysqldump --host "${MYSQL_HOST}" -P "${MYSQL_PORT}" -u "${MYSQL_USER}" -p"${MYSQL_PASSWORD}" -A -R -E --triggers --single-transaction >"${backupDir}"/"${MYSQL_BACKUP_FILE}"_"${now}".sql; then
         echo "backup complete for ${file}"
     fi
 
     # Delete Old Backups
-    # DB_BACKUP_RETENTION = value in days
-    find "${backupDir}" -name "*.sql" -type f -mtime +"${DB_BACKUP_RETENTION}" -delete
+    # MYSQL_BACKUP_RETENTION = value in days
+    find "${backupDir}" -name "*.sql" -type f -mtime +"${MYSQL_BACKUP_RETENTION}" -delete
 done

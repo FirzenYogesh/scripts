@@ -205,6 +205,8 @@ cisoCompression() {
                         compressionLevel=5
                     fi
                     if ciso "${compressionLevel}" "${input}" "${output}"; then
+                        echo "Conversion complete"
+                        echo ""
                         convertedFiles+=("${input}")
                     fi
                 fi
@@ -244,6 +246,8 @@ chdCompression() {
                     convertedFiles+=("${input}")
                 else
                     if chdman createcd -i "${input}" -o "${output}"; then
+                        echo "Conversion complete"
+                        echo ""
                         convertedFiles+=("${input}")
                     fi
                 fi

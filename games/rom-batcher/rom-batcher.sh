@@ -191,7 +191,8 @@ compressRoms() {
     fi
 }
 
-while [[ $# -gt 0 ]]; do
+# while [[ $# -gt 0 ]]; do
+for i in "$@"; do
     case $1 in
     -q | --non-interactive)
         NON_INTERACTIVE=y

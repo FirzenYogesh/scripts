@@ -143,6 +143,7 @@ cisoCompression() {
         if askConfirmation "Compress all PSP to CSO"; then
             convertedFiles=()
             echo "Converting supported files to chd"
+            shopt -s nocasematch
             for file in */*.{gdi,cue,iso}; do
                 directory=$(dirname "${file}")
                 if [[ "${directory}" =~ (.)?(sony)?(\s)?(.|-)?(\s)?(playstation|ppssp|ps)(\s)?(p|portable)* ]]; then
@@ -157,6 +158,7 @@ cisoCompression() {
                     fi
                 fi
             done
+            shopt -u nocasematch
             deleteCompressedFiles "${convertedFiles[@]}"
         fi
     fi
@@ -168,6 +170,7 @@ chdCompression() {
         if askConfirmation "Convert all supported Roms to CHD"; then
             convertedFiles=()
             echo "Converting supported files to chd"
+            shopt -s nocasematch
             for file in */*.{gdi,cue,iso}; do
                 directory=$(dirname "${file}")
                 # checking if the file is placed in either console or emulator folder
@@ -179,6 +182,7 @@ chdCompression() {
                     fi
                 fi
             done
+            shopt -u nocasematch
             deleteCompressedFiles "${convertedFiles[@]}"
         fi
     fi

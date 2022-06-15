@@ -188,11 +188,11 @@ cisoCompression() {
                     echo "${output} exists skipping conversion"
                     convertedFiles+=("${input}")
                 else
-                    read -p "Enter the compression value (0-9): [default=5]" -n 1 -r compressionLevel
+                    read -p "Enter the compression value (0-9) [default=5]: " -n 1 -r compressionLevel
                     if [[ ! "${compressionLevel}" =~ [0-9] ]]; then
                         compressionLevel=5
                     fi
-                    if chdman ciso "${compressionLevel}" "${input}" "${output}"; then
+                    if ciso "${compressionLevel}" "${input}" "${output}"; then
                         convertedFiles+=("${input}")
                     fi
                 fi

@@ -1,4 +1,4 @@
-# game-scripts
-Scripts that can be run for video games
+# scripts
+Scripts to automate lot of stuff
 
 

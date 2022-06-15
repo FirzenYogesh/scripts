@@ -144,7 +144,8 @@ cisoCompression() {
             convertedFiles=()
             echo "Converting supported files to chd"
             shopt -s nocasematch
-            for file in */*.{gdi,cue,iso}; do
+            #for file in */*.{gdi,cue,iso}; do
+            find . -type f -iname "*.iso" | while read -r file; do
                 directory=$(dirname "${file}")
                 if [[ "${directory}" =~ (.)?(sony)?(\s)?(.|-)?(\s)?(playstation|ppssp|ps)(\s)?(p|portable)* ]]; then
                     input="${file}"
@@ -171,7 +172,8 @@ chdCompression() {
             convertedFiles=()
             echo "Converting supported files to chd"
             shopt -s nocasematch
-            for file in */*.{gdi,cue,iso}; do
+            #for file in */*.{gdi,cue,iso}; do
+            find . -type f -iname "*.gdi" -iname "*.cue" -iname "*.iso" | while read -r file; do
                 directory=$(dirname "${file}")
                 # checking if the file is placed in either console or emulator folder
                 if ! [[ "${directory}" =~ (.)?(sony)?(\s)?(.|-)?(\s)?(playstation|ppssp|ps)(\s)?(p|portable)* ]] && { [[ "${directory}" =~ (.)?(sony)?(\s)?(.|-)?(\s)?(playstation|duckstation|aethersx|pcsx|ps)(\s)?(x|1|2)* ]] || [[ "${directory}" =~ (.)?(sega)?(\s)?(.|-)?(\s)?(dreamcast|saturn|flycast|redream) ]]; }; then

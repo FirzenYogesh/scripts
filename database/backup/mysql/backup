@@ -1,23 +1,34 @@
 #! /bin/bash
 
 DOCKER_COMMAND=""
-if [[ "${1}" == "--docker-mode" ]]; then
-    # Docker command for mysqldump
-    container="mysql"
-    if [[ -n "${2}" ]]; then
-        container="${2}"
-    fi
-    DOCKER_COMMAND="docker exec -i "${container}" /usr/bin/"
-fi
+CONFIG_DIRECTORY=.
+for i in "$@"; do
+    case $1 in
+    --docker-mode=*)
+        container="${i#*=}"
+        if [[ -z "${container}" ]]; then
+            container="mysql"
+        fi
+        DOCKER_COMMAND="docker exec -i ${container} /usr/bin/"
+        shift # past argument=value
+        ;;
+    --config-dir=*)
+        CONFIG_DIRECTORY="${i#*=}"
+        shift
+        ;;
+    esac
+done
 
 # Get current date
 now="$(date +'%Y_%m_%d_%H_%M_%S')"
 
-for file in config/.*.db; do
+cd "${CONFIG_DIRECTORY}" || exit 1
+
+for file in .*.db; do
     echo "backing up ${file}"
 
-    # Load Config for the current database backup 
-    source $file
+    # Load Config for the current database backup
+    source "${file}"
 
     backupDir="${DB_BACKUP_FOLDER}"/"${DB_HOST}"
 
@@ -25,7 +36,7 @@ for file in config/.*.db; do
     mkdir -p "${backupDir}"
 
     # Execute the mysql dump
-    if eval "${DOCKER_COMMAND}"mysqldump --host "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -A -R -E --triggers --single-transaction > "${backupDir}"/"${DB_BACKUP_FILE}"_"${now}".sql; then
+    if eval "${DOCKER_COMMAND}"mysqldump --host "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASSWORD}" -A -R -E --triggers --single-transaction >"${backupDir}"/"${DB_BACKUP_FILE}"_"${now}".sql; then
         echo "backup complete for ${file}"
     fi
 

@@ -51,22 +51,22 @@ extract() {
         fi
         ;;
     *.tar.gz)
-        if checkIfPageExists tar; then
+        if checkIfPackageExists tar; then
             tar xvzf "${1}"
         fi
         ;;
     *.bz2)
-        if checkIfPageExists bunzip2; then
+        if checkIfPackageExists bunzip2; then
             bunzip2 "${1}"
         fi
         ;;
     *.rar)
-        if checkIfPageExists rar; then
+        if checkIfPackageExists rar; then
             rar x "${1}"
         fi
         ;;
     *.gz)
-        if checkIfPageExists gunzip; then
+        if checkIfPackageExists gunzip; then
             gunzip "${1}"
         fi
         ;;
@@ -81,22 +81,22 @@ extract() {
         fi
         ;;
     *.tgz)
-        if checkIfPageExists tar; then
+        if checkIfPackageExists tar; then
             tar xvzf "${1}"
         fi
         ;;
     *.zip)
-        if checkIfPageExists unzip; then
+        if checkIfPackageExists unzip; then
             unzip -o -d "$(dirname "${1}")" "${1}"
         fi
         ;;
     *.Z)
-        if checkIfPageExists uncompress; then
+        if checkIfPackageExists uncompress; then
             uncompress "${1}"
         fi
         ;;
     *.7z)
-        if checkIfPageExists 7z; then
+        if checkIfPackageExists 7z; then
             7z x "${1}"
         fi
         ;;
@@ -110,7 +110,7 @@ extractArchive() {
         echo "Extracting all(zipped) Roms"
         # find all archives in 3 sub folder depth
         # example ./game.zip ./console/game.zip ./manufacturer/console/game.zip
-        findCommand='find . -type f \( -iname "*.zip" -o -iname "*.7z" \) -maxdepth 3'
+        findCommand='find . -maxdepth 3 -type f \( -iname "*.zip" -o -iname "*.7z" \)'
         eval "${findCommand}" | while read -r filename; do extract "${filename}"; done
         # delete the source files
         if [[ $DELETE_SOURCE_ARCHIVES =~ ^[Yy]$ ]] || askConfirmation "Remove the source archives?"; then

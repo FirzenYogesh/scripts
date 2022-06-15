@@ -123,8 +123,18 @@ extractArchive() {
     # find all archives in 3 sub folder depth
     # example ./game.zip ./console/game.zip ./manufacturer/console/game.zip
     mapfile -t files < <(find . -maxdepth "${MAX_DEPTH_FOR_ROMS}" -type f \( -iname "*.zip" -o -iname "*.7z" \))
+    if [[ "${#files[@]}" -gt 0 ]]; then
+        echo "There are totally ${#files[@]} files eligible for extraction"
+        echo ""
+        for file in "${files[@]}"; do
+            echo "${file}"
+        done
+    else
+        echo "Could not find any eligible files for extraction"
+    fi
+    files
     if [[ "${#files[@]}" -gt 0 ]] && askConfirmation "Extract all (zipped) Roms?"; then
-        echo "Extracting all(zipped) Roms"
+        echo "Extracting all archived Roms"
         for file in "${files[@]}"; do
             extract "${file}"
         done

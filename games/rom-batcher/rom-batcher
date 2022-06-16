@@ -74,8 +74,8 @@ extract() {
         fi
         ;;
     *.rar)
-        if checkIfPackageExists rar; then
-            rar x "${1}"
+        if checkIfPackageExists unrar; then
+            unrar x "${1}" "$(dirname "${1}")"
         fi
         ;;
     *.gz)
@@ -141,7 +141,7 @@ extractArchive() {
     echo "Checking if any files are eligible for extraction"
     # find all archives in 3 sub folder depth
     # example ./game.zip ./console/game.zip ./manufacturer/console/game.zip
-    mapfile -t files < <(find . -maxdepth "${MAX_DEPTH_FOR_ROMS}" -type f \( -iname "*.zip" -o -iname "*.7z" \))
+    mapfile -t files < <(find . -maxdepth "${MAX_DEPTH_FOR_ROMS}" -type f \( -iname "*.zip" -o -iname "*.7z" -o iname "*.rar" \))
     listFiles "eligible for extraction" "No files available for extraction" "${files[@]}"
     if [[ "${#files[@]}" -gt 0 ]] && askConfirmation "Extract all (zipped) Roms?"; then
         echo "Extracting all archived Roms"

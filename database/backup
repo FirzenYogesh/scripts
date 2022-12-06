@@ -1,0 +1,70 @@
+#! /bin/bash
+
+# Auto Backup
+CONFIG_DIRECTORY=.
+
+showHelp() {
+    echo "Backup - Batch Job DB Backups"
+    echo ""
+    echo "Usage: auto-backup [<options>...]"
+    echo ""
+    echo "<options>"
+    echo "      --config-dir=</path/to/config>  -   Specify the config directory, if not specified the script will take the current directory where it is run"
+    echo "  -h, --help                          -   Shows this help menu"
+}
+
+for i in "$@"; do
+    case $1 in
+    --config-dir=*)
+        CONFIG_DIRECTORY="${i#*=}"
+        shift
+        ;;
+    -h | --help)
+        showHelp
+        exit 0
+        ;;
+    esac
+done
+
+now="$(date +'%Y_%m_%d_%H_%M_%S')"
+
+cd "${CONFIG_DIRECTORY}" || exit 1
+for file in *.db; do
+    echo "backing up ${file}"
+
+    # Load Config for the current database mongodb-backup
+    source "${file}"
+
+    parent="${APP:-$HOST}"
+    backupDir="${BACKUP_FOLDER}/${DRIVER}/${parent}"
+
+    # Create the mongodb-backup folder
+    mkdir -p "${backupDir}"
+
+    DOCKER_COMMAND=""
+    if [[ ! -z "${DOCKER_CONTAINER}" ]]; then
+        DOCKER_COMMAND="docker exec -it ${DOCKER_CONTAINER} "
+    fi
+
+
+    if [[ "${DRIVER}" == "MySQL" ]]; then
+        # Execute the mysql dump
+        if eval "${DOCKER_COMMAND}"mysqldump --host "${HOST}" -P "${PORT}" -u "${USER}" -p"${PASSWORD}" -A -R -E --triggers --single-transaction >"${backupDir}"/"${BACKUP_FILE}"_"${now}".sql; then
+            echo "backup complete for ${file}"
+        fi
+    elif [[ "${DRIVER}" == "MongoDB" ]]; then
+        # Execute the mongo dump
+        if eval "${DOCKER_COMMAND}"mongodump --host="${HOST}" --port="${PORT}" --username="${USER}" --password="${PASSWORD}" --authenticationDatabase="${AUTHENTICATION_DATABASE} --archive" >"${backupDir}"/"${BACKUP_FILE}"_"${now}".mongodump; then
+            echo "backup complete for ${file}"
+        fi
+    elif [[ "${DRIVER}" == "PostgreSQL" ]]; then
+        # Execute the postgres dump
+        if eval "${DOCKER_COMMAND}"pg_dumpall -c -U "${USER}" >"${backupDir}"/"${BACKUP_FILE}"_"${now}".pgsql; then
+            echo "backup complete for ${file}"
+        fi
+    fi
+
+    # Delete Old Backups
+    # BACKUP_RETENTION = value in days
+    find "${backupDir}" \( -name "*.sql" -or -name "*.mongodump" -or -name "*.pgsql" \) -type f -mtime +"${BACKUP_RETENTION}" -delete
+done

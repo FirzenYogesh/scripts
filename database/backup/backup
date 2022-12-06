@@ -29,7 +29,7 @@ done
 now="$(date +'%Y_%m_%d_%H_%M_%S')"
 
 cd "${CONFIG_DIRECTORY}" || exit 1
-for file in .*.db; do
+for file in *.db; do
     echo "backing up ${file}"
 
     # Load Config for the current database mongodb-backup

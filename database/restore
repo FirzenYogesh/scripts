@@ -62,8 +62,4 @@ for file in *.db; do
             echo "backup complete for ${file}"
         fi
     fi
-
-    # Delete Old Backups
-    # BACKUP_RETENTION = value in days
-    find "${backupDir}" \( -name "*.sql" -or -name "*.mongodump" -or -name "*.pgsql" \) -type f -mtime +"${BACKUP_RETENTION}" -delete
 done

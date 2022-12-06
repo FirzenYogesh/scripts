@@ -1,0 +1,35 @@
+# Defining this would make sure it backs up the database present in the container
+DOCKER_CONTAINER=mysql
+
+# Specifies what type of database it is
+# Current possible values are [MySQL, MongoDB, PostgreSQL]
+DRIVER=MySQL
+
+# Appname, if set, it will override the parent of the backup file
+
+# Hostname of the database
+HOST=localhost
+
+# Port of the database
+PORT=3306
+
+# Username of the database
+USER=firzenyogesh
+
+# Password for the database access
+PASSWORD="password"
+
+# Directory in which it has to store the backup
+BACKUP_FOLDER="${HOME}/backup/Database"
+
+# File name of the database dump
+BACKUP_FILE="full_backup"
+
+# maximum days retention for the backup
+BACKUP_RETENTION=7
+
+# Define for mongodb for authentication
+AUTHENTICATION_DATABASE=admin
+
+# Define it for specific database backup/restore
+DATABASE=

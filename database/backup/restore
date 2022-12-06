@@ -1,0 +1,68 @@
+#! /bin/bash
+
+# Auto Backup
+CONFIG_DIRECTORY=.
+
+showHelp() {
+    echo "Restore - Batch Job DB Restore"
+    echo ""
+    echo "Usage: auto-backup [<options>...]"
+    echo ""
+    echo "<options>"
+    echo "      --config-dir=</path/to/config>  -   Specify the config directory, if not specified the script will take the current directory where it is run"
+    echo "  -h, --help                          -   Shows this help menu"
+}
+
+for i in "$@"; do
+    case $1 in
+    --config-dir=*)
+        CONFIG_DIRECTORY="${i#*=}"
+        shift
+        ;;
+    -h | --help)
+        showHelp
+        exit 0
+        ;;
+    esac
+done
+
+now="$(date +'%Y_%m_%d_%H_%M_%S')"
+
+cd "${CONFIG_DIRECTORY}" || exit 1
+for file in .*.db; do
+    echo "backing up ${file}"
+
+    # Load Config for the current database mongodb-backup
+    source "${file}"
+
+    parent="${APP:-$HOST}"
+    backupDir="${BACKUP_FOLDER}/${DRIVER}/${HOST}"
+
+    DOCKER_COMMAND=""
+    if [[ ! -z "${DOCKER_CONTAINER}" ]]; then
+        DOCKER_COMMAND="docker exec -it ${DOCKER_CONTAINER} "
+    fi
+
+
+    if [[ "${DRIVER}" == "mysql" ]]; then
+        # Execute the mysql dump
+        if eval mysqlrestore; then
+            echo "backup complete for ${file}"
+        fi
+    elif [[ "${DRIVER}" == "mongodb" ]]; then
+        # Execute the mongo dump
+        if eval mongorestore; then
+            echo "backup complete for ${file}"
+        fi
+    elif [[ "${DRIVER}" == "postgres" ]]; then
+        # Execute the postgres dump
+        if [[ ! -z "${DATABASE}" ]];
+            DATABASE_ARG=" -d ${DATABASE}"
+        if eval cat "${BACKUP_FILE}" | "${DOCKER_COMMAND}"psql -U "${USER}" "${DATABASE_ARG}"; then
+            echo "backup complete for ${file}"
+        fi
+    fi
+
+    # Delete Old Backups
+    # BACKUP_RETENTION = value in days
+    find "${backupDir}" \( -name "*.sql" -or -name "*.mongodump" -or -name "*.pgsql" \) -type f -mtime +"${BACKUP_RETENTION}" -delete

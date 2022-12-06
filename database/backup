@@ -36,7 +36,7 @@ for file in *.db; do
     source "${file}"
 
     parent="${APP:-$HOST}"
-    backupDir="${BACKUP_FOLDER}/${DRIVER}/${parent}"
+    backupDir="${BACKUP_FOLDER}/${parent}/${DRIVER}"
 
     # Create the mongodb-backup folder
     mkdir -p "${backupDir}"

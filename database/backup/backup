@@ -42,7 +42,7 @@ for file in .*.db; do
     mkdir -p "${backupDir}"
 
     DOCKER_COMMAND=""
-    if [[ -z "${DOCKER_CONTAINER}" ]]; then
+    if [[ ! -z "${DOCKER_CONTAINER}" ]]; then
         DOCKER_COMMAND="docker exec -it ${DOCKER_CONTAINER} "
     fi
 

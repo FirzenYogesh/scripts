@@ -59,7 +59,7 @@ for file in *.db; do
         fi
     elif [[ "${DRIVER}" == "PostgreSQL" ]]; then
         # Execute the postgres dump
-        if eval "${DOCKER_COMMAND}"pg_dumpall -c -U "${USER}" >"${backupDir}"/"${BACKUP_FILE}"_"${now}".pgsql; then
+        if eval "${DOCKER_COMMAND}"pg_dumpall -c -U "${USER}" -h "${HOST}" -p "${PORT}" --clean >"${backupDir}"/"${BACKUP_FILE}"_"${now}".pgsql; then
             echo "backup complete for ${file}"
         fi
     fi

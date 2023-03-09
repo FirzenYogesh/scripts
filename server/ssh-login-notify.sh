@@ -2,7 +2,7 @@
 
 # add this like to /etc/pam.d/sshd
 # session optional pam_exec.so seteuid /path/to/ssh-login-notify.sh
-# check if UsePAM=yes in sshd_config
+# (optional check) if UsePAM=yes in sshd_config
 
 APP_ROOT="$(dirname "$(readlink -fm "$0")")"
 

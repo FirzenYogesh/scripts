@@ -4,10 +4,19 @@
 # session optional pam_exec.so seteuid /path/to/ssh-login-notify.sh
 # (optional check) if UsePAM=yes in sshd_config
 
+# grepcidr package is needed for this to work
+# https://command-not-found.com/grepcidr
+
 APP_ROOT="$(dirname "$(readlink -fm "$0")")"
 
 source "${APP_ROOT}/.ssh-login-notify.env"
 
+if [[ ! -z "${ALLOWED_IPS}" ]]; then
+    ips=(`echo "${ALLOWED_IPS}" | tr ',' ' '`)
+    if eval grepcidr "$ALLOWED_IPS" <(echo "$PAM_RHOST") >/dev/null; then
+        exit 0
+    fi
+fi
 
 if [[ "${PAM_TYPE}" != "close_session" ]]; then
     host="`hostname`"
@@ -22,8 +31,8 @@ if [[ "${PAM_TYPE}" != "close_session" ]]; then
     text="${subject}"
 
     # Hookshot webhook
-    if [[ ! -z "${SSH_NOTIFY_HOOKSHOT_URL}" ]]; then
-        curl -L -X POST "${SSH_NOTIFY_HOOKSHOT_URL}" \
+    if [[ ! -z "${HOOKSHOT_URL}" ]]; then
+        curl -L -X POST "${HOOKSHOT_URL}" \
         -H 'Content-Type: application/json' \
         --data-raw '{
             "text": "'"${text}"'",

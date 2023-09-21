@@ -39,13 +39,12 @@ function uploadToS3() {
     fileName="${2}"
     if [[ "${S3_ENABLED}" == true ]]; then
         if [[ -n "${S3_BUCKET}" ]]; then
+            if command -v "aws" >/dev/null 2>&1; then
+                aws --profile "${S3_CLI_PROFILE}" s3 cp "${backupDir}/${fileName}" "s3://${S3_BUCKET}/${S3_BASE_PATH:-database}/${APP:-$HOST}/${DRIVER}/${fileName}"
+            fi
+        else
             echo "S3 bucket is not configured"
         fi
-
-        if command -v "aws" >/dev/null 2>&1; then
-            aws --profile "${S3_CLI_PROFILE}" s3 cp "${backupDir}/${fileName}" "s3://${S3_BUCKET}/${S3_BASE_PATH:-database}/${APP:-$HOST}/${DRIVER}/${fileName}"
-        fi
-
     else
         echo "S3 backup is disabled"
     fi

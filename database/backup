@@ -37,21 +37,21 @@ now="$(date +'%Y_%m_%d_%H_%M_%S')"
 function uploadToS3() {
     backupDir="${1}"
     fileName="${2}"
-    if [[ "${S3_ENABLED}" == false ]]; then
+    if [[ "${S3_ENABLED}" == true ]]; then
+        if [[ -n "${S3_BUCKET}" ]]; then
+            echo "S3 bucket is not configured"
+            exit 1
+        fi
+
+        if command -v "aws" >/dev/null 2>&1; then
+            aws --profile "${S3_CLI_PROFILE}" s3 cp "${backupDir}/${fileName}" "s3://${S3_BUCKET}/${S3_BASE_PATH:-database}/${APP:-$HOST}/${DRIVER}/${fileName}"
+        fi
+
+        exit 0
+    else
         echo "S3 backup is disabled"
         exit 1
     fi
-
-    if [[ -n "${S3_BUCKET}" ]]; then
-        echo "S3 bucket is not configured"
-        exit 1
-    fi
-
-    if command -v "aws" >/dev/null 2>&1; then
-        aws --profile "${S3_CLI_PROFILE}" s3 cp "${backupDir}/${fileName}" "s3://${S3_BUCKET}/${S3_BASE_PATH:-database}/${APP:-$HOST}/${DRIVER}/${fileName}"
-    fi
-
-    exit 0
 }
 
 function uploadToCloud() {

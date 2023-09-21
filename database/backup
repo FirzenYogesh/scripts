@@ -130,8 +130,10 @@ function backupFromConfigFile() {
 }
 
 if [[ -n "${CONFIG_FILE}" ]] && [[ -f "${CONFIG_FILE}" ]]; then
+    echo "A configuration file has been provided ${CONFIG_FILE}"
     backupFromConfigFile "${CONFIG_FILE}"
 elif [[ -n "${CONFIG_DIRECTORY}" ]] && [[ -d "${CONFIG_DIRECTORY}" ]]; then
+    echo "A configuration directory has been provided ${CONFIG_DIRECTORY}"
     cd "${CONFIG_DIRECTORY}" || exit 1
     for file in *.db; do
         backupFromConfigFile "${file}"

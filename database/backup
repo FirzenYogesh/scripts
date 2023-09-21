@@ -7,9 +7,10 @@ CONFIG_FILE=
 showHelp() {
     echo "Backup - Batch Job DB Backups"
     echo ""
-    echo "Usage: auto-backup [<options>...]"
+    echo "Usage: backup [<options>...]"
     echo ""
     echo "<options>"
+    echo "      --config-file=</path/to/file>  -   Specify the config directory, if not specified the script will take the current directory where it is run"
     echo "      --config-dir=</path/to/config>  -   Specify the config directory, if not specified the script will take the current directory where it is run"
     echo "  -h, --help                          -   Shows this help menu"
 }
@@ -103,6 +104,7 @@ function deleteOldBackup() {
     find "${1}" \( -name "*.sql" -or -name "*.mongodump" -or -name "*.pgsql" \) -type f -mtime +"${BACKUP_RETENTION}" -delete
 
     # for aws it is better to configure retention policy through AWS Console
+    exit 0
 }
 
 function backupFromConfigFile() {
@@ -127,11 +129,15 @@ function backupFromConfigFile() {
     exit 0
 }
 
-if [[ -n "${CONFIG_FILE}" ]]; then
+if [[ -n "${CONFIG_FILE}" ]] && [[ -f "${CONFIG_FILE}" ]]; then
     backupFromConfigFile "${CONFIG_FILE}"
-else
+elif [[ -n "${CONFIG_DIRECTORY}" ]] && [[ -d "${CONFIG_DIRECTORY}" ]]; then
     cd "${CONFIG_DIRECTORY}" || exit 1
     for file in *.db; do
         backupFromConfigFile "${file}"
     done
+else
+    echo "Invalid configuration"
+    exit 1
 fi
+exit 0

@@ -87,6 +87,9 @@ function executeBackup() {
     # execute the backup here ${1} => contains directory of the backup file
     if eval "${backupCommand} >${1}/${backedUpFile}"; then
         uploadToCloud "${1}" "${backedUpFile}"
+        echo "backup complete for ${2}"
+    else
+        echo "backup failed for ${2}"
     fi
 }
 
@@ -108,13 +111,7 @@ function backupFromConfigFile() {
     # Create the mongodb-backup folder
     mkdir -p "${backupDir}"
 
-    if eval executeBackup "${backupDir}"; then
-        # Delete Old Backups
-        echo "backup complete for ${1}"
-        deleteOldBackup "${backupDir}"
-    else
-        echo "backup failed for ${1}"
-    fi
+    eval executeBackup "${backupDir}" "${1}"
 }
 
 if [[ -n "${CONFIG_FILE}" ]] && [[ -f "${CONFIG_FILE}" ]]; then

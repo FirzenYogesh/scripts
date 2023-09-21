@@ -2,6 +2,7 @@
 
 # Auto Backup
 CONFIG_DIRECTORY=.
+CONFIG_FILE=
 
 showHelp() {
     echo "Backup - Batch Job DB Backups"
@@ -19,6 +20,10 @@ for i in "$@"; do
         CONFIG_DIRECTORY="${i#*=}"
         shift
         ;;
+    --config-file=*)
+        CONFIG_FILE="${i#*=}"
+        shift
+        ;;
     -h | --help)
         showHelp
         exit 0
@@ -28,43 +33,105 @@ done
 
 now="$(date +'%Y_%m_%d_%H_%M_%S')"
 
-cd "${CONFIG_DIRECTORY}" || exit 1
-for file in *.db; do
-    echo "backing up ${file}"
+function uploadToS3() {
+    backupDir="${1}"
+    fileName="${2}"
+    if [[ "${S3_ENABLED}" == false ]]; then
+        echo "S3 backup is disabled"
+        exit 1
+    fi
+
+    if [[ -n "${S3_BUCKET}" ]]; then
+        echo "S3 bucket is not configured"
+        exit 1
+    fi
+
+    if command -v "aws" >/dev/null 2>&1; then
+        aws --profile "${S3_CLI_PROFILE}" s3 cp "${backupDir}/${fileName}" "s3://${S3_BUCKET}/${S3_BASE_PATH:-database}/${APP:-$HOST}/${DRIVER}/${fileName}"
+    fi
+
+    exit 0
+}
+
+function uploadToCloud() {
+    # Cloud Upload goes here
+    if ! [[ -f "${1}/${2}" ]]; then
+        echo "The file ${1}/${2} does not exist, aborting cloud backup"
+        exit 1
+    fi
+    uploadToS3 "${1}" "${2}"
+    exit 0
+}
+
+function executeBackup() {
+    # set docker command here
+    dockerCommand=""
+    backedUpFile=""
+    if [[ -n "${DOCKER_CONTAINER}" ]]; then
+        dockerCommand="docker exec -it ${DOCKER_CONTAINER} "
+    fi
+
+    backupCommand=""
+    if [[ "${DRIVER}" == "MySQL" ]]; then
+        # the mysql dump
+        backedUpFile="${BACKUP_FILE}_${now}.sql"
+        backupCommand="${dockerCommand}mysqldump --host ${HOST} -P ${PORT} -u ${USER} -p${PASSWORD} -A -R -E --triggers --single-transaction"
+    elif [[ "${DRIVER}" == "MongoDB" ]]; then
+        # the mongo dump
+        backedUpFile="${BACKUP_FILE}_${now}.mongodump"
+        backupCommand="${dockerCommand}mongodump --host=${HOST} --port=${PORT} --username=${USER} --password=${PASSWORD} --authenticationDatabase=${AUTHENTICATION_DATABASE} --archive"
+    elif [[ "${DRIVER}" == "PostgreSQL" ]]; then
+        # the postgres dump
+        backedUpFile="${BACKUP_FILE}_${now}.pgsql"
+        backupCommand="${dockerCommand}pg_dumpall -c -U ${USER} -h ${HOST} -p ${PORT}"
+    else
+        echo "Unsupported Database";
+        exit 1
+    fi
+
+    # execute the backup here ${1} => contains directory of the backup file
+    if eval "${backupCommand} >${1}/${backedUpFile}"; then
+        uploadToCloud "${1}" "${backedUpFile}"
+        exit 0
+    else
+        exit 1
+    fi
+}
+
+function deleteOldBackup() {
+    # BACKUP_RETENTION = value in days
+    find "${1}" \( -name "*.sql" -or -name "*.mongodump" -or -name "*.pgsql" \) -type f -mtime +"${BACKUP_RETENTION}" -delete
+
+    # for aws it is better to configure retention policy through AWS Console
+}
+
+function backupFromConfigFile() {
+    echo "backing up ${1}"
 
     # Load Config for the current database mongodb-backup
-    source "${file}"
+    source "${1}"
 
-    parent="${APP:-$HOST}"
-    backupDir="${BACKUP_FOLDER}/${parent}/${DRIVER}"
+    backupDir="${BACKUP_FOLDER}/${APP:-$HOST}/${DRIVER}"
 
     # Create the mongodb-backup folder
     mkdir -p "${backupDir}"
 
-    DOCKER_COMMAND=""
-    if [[ ! -z "${DOCKER_CONTAINER}" ]]; then
-        DOCKER_COMMAND="docker exec -it ${DOCKER_CONTAINER} "
+    if eval executeBackup "${backupDir}"; then
+        # Delete Old Backups
+        echo "backup complete for ${1}"
+        deleteOldBackup "${backupDir}"
+    else
+        echo "backup failed for ${1}"
     fi
 
+    exit 0
+}
 
-    if [[ "${DRIVER}" == "MySQL" ]]; then
-        # Execute the mysql dump
-        if eval "${DOCKER_COMMAND}"mysqldump --host "${HOST}" -P "${PORT}" -u "${USER}" -p"${PASSWORD}" -A -R -E --triggers --single-transaction >"${backupDir}"/"${BACKUP_FILE}"_"${now}".sql; then
-            echo "backup complete for ${file}"
-        fi
-    elif [[ "${DRIVER}" == "MongoDB" ]]; then
-        # Execute the mongo dump
-        if eval "${DOCKER_COMMAND}"mongodump --host="${HOST}" --port="${PORT}" --username="${USER}" --password="${PASSWORD}" --authenticationDatabase="${AUTHENTICATION_DATABASE} --archive" >"${backupDir}"/"${BACKUP_FILE}"_"${now}".mongodump; then
-            echo "backup complete for ${file}"
-        fi
-    elif [[ "${DRIVER}" == "PostgreSQL" ]]; then
-        # Execute the postgres dump
-        if eval "${DOCKER_COMMAND}"pg_dumpall -c -U "${USER}" -h "${HOST}" -p "${PORT}" >"${backupDir}"/"${BACKUP_FILE}"_"${now}".pgsql; then
-            echo "backup complete for ${file}"
-        fi
-    fi
-
-    # Delete Old Backups
-    # BACKUP_RETENTION = value in days
-    find "${backupDir}" \( -name "*.sql" -or -name "*.mongodump" -or -name "*.pgsql" \) -type f -mtime +"${BACKUP_RETENTION}" -delete
-done
+if [[ -n "${CONFIG_FILE}" ]]; then
+    backupFromConfigFile "${CONFIG_FILE}"
+else
+    cd "${CONFIG_DIRECTORY}" || exit 1
+    for file in *.db; do
+        backupFromConfigFile "${file}"
+    done
+fi

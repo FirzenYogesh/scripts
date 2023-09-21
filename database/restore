@@ -39,7 +39,7 @@ for file in *.db; do
     backupDir="${BACKUP_FOLDER}/${DRIVER}/${HOST}"
 
     DOCKER_COMMAND=""
-    if [[ ! -z "${DOCKER_CONTAINER}" ]]; then
+    if [[ -n "${DOCKER_CONTAINER}" ]]; then
         DOCKER_COMMAND="docker exec -it ${DOCKER_CONTAINER} "
     fi
 
@@ -56,8 +56,9 @@ for file in *.db; do
         fi
     elif [[ "${DRIVER}" == "postgres" ]]; then
         # Execute the postgres dump
-        if [[ ! -z "${DATABASE}" ]];
+        if [[ -n "${DATABASE}" ]]; then
             DATABASE_ARG=" -d ${DATABASE}"
+        fi
         if eval cat "${BACKUP_FILE}" | "${DOCKER_COMMAND}"psql -U "${USER}" "${DATABASE_ARG}"; then
             echo "backup complete for ${file}"
         fi

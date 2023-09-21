@@ -10,7 +10,7 @@ showHelp() {
     echo "Usage: backup [<options>...]"
     echo ""
     echo "<options>"
-    echo "      --config-file=</path/to/file>  -   Specify the config directory, if not specified the script will take the current directory where it is run"
+    echo "      --config-file=</path/to/file>   -   Specify the config file, if not specified the script will take the current directory where it is run"
     echo "      --config-dir=</path/to/config>  -   Specify the config directory, if not specified the script will take the current directory where it is run"
     echo "  -h, --help                          -   Shows this help menu"
 }

@@ -38,9 +38,12 @@ function uploadToS3() {
     backupDir="${1}"
     fileName="${2}"
     if [[ "${S3_ENABLED}" == true ]]; then
-        if [[ -n "${S3_BUCKET}" ]]; then
-            if command -v "aws" >/dev/null 2>&1; then
-                aws --profile "${S3_CLI_PROFILE}" s3 cp "${backupDir}/${fileName}" "s3://${S3_BUCKET}/${S3_BASE_PATH:-database}/${APP:-$HOST}/${DRIVER}/${fileName}"
+        if [[ -n "${S3_BUCKET}" ]] && [[ -n "${S3_REGION}" ]]; then
+            awsCommand="${AWS_COMMAND_PATH:-aws}"
+            if command -v "${awsCommand}" >/dev/null 2>&1; then
+                eval "${awsCommand} --profile ${S3_CLI_PROFILE:-default} --region ${S3_REGION} s3 cp ${backupDir}/${fileName} s3://${S3_BUCKET}/${S3_BASE_PATH:-database}/${APP:-$HOST}/${DRIVER}/${fileName}"
+            else
+                echo "AWS command is not available"
             fi
         else
             echo "S3 bucket is not configured"

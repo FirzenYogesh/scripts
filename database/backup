@@ -70,7 +70,7 @@ function executeBackup() {
     dockerCommand=""
     backedUpFile=""
     if [[ -n "${DOCKER_CONTAINER}" ]]; then
-        dockerCommand="docker exec -it ${DOCKER_CONTAINER} "
+        dockerCommand="docker exec -i ${DOCKER_CONTAINER} "
     fi
 
     backupCommand=""

@@ -32,7 +32,8 @@ for i in "$@"; do
     esac
 done
 
-now="$(date +'%Y_%m_%d_%H_%M_%S')"
+dateObj="$(date +'%Y_%m_%d')"
+timeObj="$(date +'%H_%M_%S')"
 
 function uploadToS3() {
     backupDir="${1}"
@@ -75,15 +76,15 @@ function executeBackup() {
     backupCommand=""
     if [[ "${DRIVER}" == "MySQL" ]]; then
         # the mysql dump
-        backedUpFile="${BACKUP_FILE}_${now}.sql"
+        backedUpFile="${BACKUP_FILE}_${timeObj}.sql"
         backupCommand="${dockerCommand}mysqldump --host ${HOST} -P ${PORT} -u ${USER} -p${PASSWORD} -A -R -E --triggers --single-transaction"
     elif [[ "${DRIVER}" == "MongoDB" ]]; then
         # the mongo dump
-        backedUpFile="${BACKUP_FILE}_${now}.mongodump"
+        backedUpFile="${BACKUP_FILE}_${timeObj}.mongodump"
         backupCommand="${dockerCommand}mongodump --host=${HOST} --port=${PORT} --username=${USER} --password=${PASSWORD} --authenticationDatabase=${AUTHENTICATION_DATABASE} --archive"
     elif [[ "${DRIVER}" == "PostgreSQL" ]]; then
         # the postgres dump
-        backedUpFile="${BACKUP_FILE}_${now}.pgsql"
+        backedUpFile="${BACKUP_FILE}_${timeObj}.pgsql"
         backupCommand="${dockerCommand}pg_dumpall -c -U ${USER} -h ${HOST} -p ${PORT}"
     else
         echo "Unsupported Database";
@@ -111,7 +112,7 @@ function backupFromConfigFile() {
     # Load Config for the current database mongodb-backup
     source "${1}"
 
-    backupDir="${BACKUP_FOLDER}/${APP:-$HOST}/${DRIVER}"
+    backupDir="${BACKUP_FOLDER}/${APP:-$HOST}/${DRIVER}/${dateObj}"
 
     # Create the mongodb-backup folder
     mkdir -p "${backupDir}"

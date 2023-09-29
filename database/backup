@@ -120,6 +120,9 @@ function backupFromConfigFile() {
     eval executeBackup "${backupDir}" "${1}"
 }
 
+echo "configuration file path ${CONFIG_FILE}"
+echo "configuration directory path ${CONFIG_DIRECTORY}"
+
 if [[ -n "${CONFIG_FILE}" ]] && [[ -f "${CONFIG_FILE}" ]]; then
     echo "A configuration file has been provided ${CONFIG_FILE}"
     backupFromConfigFile "${CONFIG_FILE}"

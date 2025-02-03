@@ -2,49 +2,91 @@ import os
 import sys
 import subprocess
 
-# Function to extract a clip with two-stage processing (fast first, fallback if needed)
-def extract_clip(video_path, start_time, clip_duration, output_file):
-    """
-    Extracts a clip using stream copy first. If sync issues are detected, retries with audio re-encoding.
-    """
+OVERLAPPING_BUFFER_RANGE = 120
 
-    # Step 1: Try fast extraction (copy both video & audio)
-    ffmpeg_cmd_fast = [
+def get_keyframes(video_path, duration_limit=1800):
+    """
+    Extracts keyframe timestamps from the first `duration_limit` seconds of the video.
+    This speeds up scanning for large files.
+    """
+    print(f"Getting Keyframes for {video_path} with duration {duration_limit}")
+    cmd = [
+        "ffprobe", "-select_streams", "v",
+        "-show_frames", "-show_entries", "frame=pkt_pts_time,pict_type",
+        "-of", "csv",
+        "-read_intervals", f"%+#{duration_limit}",  # Scan only first X seconds
+        video_path
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    keyframes = []
+
+    for line in result.stdout.split("\n"):
+        parts = line.strip().split(",")
+        if len(parts) == 2 and parts[1] == "I":  # I-Frame (Keyframe)
+            try:
+                keyframes.append(float(parts[0]))  # Store timestamp
+            except ValueError:
+                continue  # Skip invalid rows (e.g., headers)
+
+    return keyframes
+
+
+def get_nearest_keyframe(target_time, keyframes):
+    """
+    Finds the nearest keyframe before the target time.
+    """
+    print(f"Finding the nearest keyframe")
+    keyframes_before_target = [k for k in keyframes if k <= target_time]
+
+    if keyframes_before_target:
+        nearest_keyframe = max(keyframes_before_target)  # Get the closest keyframe before target
+    else:
+        nearest_keyframe = target_time  # Default to original start if no keyframes exist
+
+    # Force start time to be an even number
+    if nearest_keyframe % 2 != 0:
+        nearest_keyframe = nearest_keyframe - 1  # Round down to the nearest even number
+
+    return nearest_keyframe
+
+
+
+def extract_clip(video_path, start_time, clip_duration, output_file, keyframes):
+    """
+    Extracts a clip at the nearest keyframe to prevent audio delay.
+    """
+    nearest_keyframe = start_time
+    # nearest_keyframe = get_nearest_keyframe(start_time, keyframes)
+    # print(f"Adjusting start time: {start_time} → {nearest_keyframe}")
+
+    # Ensure start time is even
+    if nearest_keyframe % 2 != 0:
+        nearest_keyframe -= 1  # Round down to nearest even number
+
+    # Ensure the duration is also even
+    if clip_duration % 2 != 0:
+        clip_duration += 1  # Make duration an even number
+
+    print(f"Adjusting start time: {nearest_keyframe} (forcing even timestamp)")
+
+    ffmpeg_cmd = [
         "ffmpeg",
         "-i", video_path,
-        "-ss", seconds_to_time(start_time),
+        "-ss", str(nearest_keyframe),  # Use nearest keyframe
         "-t", str(clip_duration),
         "-map", "0:v", "-map", "0:a:0",
-        "-c:v", "copy",
-        "-c:a", "copy",
+        "-c:v", "copy",  # No video re-encoding
+        "-c:a", "copy",  # No audio re-encoding unless necessary
+        # "-c:a", "aac", "-b:a", "192k",  # Re-encode audio
         "-reset_timestamps", "1",
         "-avoid_negative_ts", "make_zero",
         "-y",
         output_file
     ]
 
-    print(f"Trying fast extraction: {output_file}")
-    result = subprocess.run(ffmpeg_cmd_fast, capture_output=True, text=True)
-
-    # Step 2: If sync issues occur, retry with audio re-encoding
-    if result.returncode != 0 or "PTS" in result.stderr:
-        print(f"Detected sync issue in {output_file}, re-processing with audio re-encoding...")
-
-        ffmpeg_cmd_fallback = [
-            "ffmpeg",
-            "-i", video_path,
-            "-ss", seconds_to_time(start_time),
-            "-t", str(clip_duration),
-            "-map", "0:v", "-map", "0:a:0",
-            "-c:v", "copy",
-            "-c:a", "aac", "-b:a", "192k",
-            "-reset_timestamps", "1",
-            "-avoid_negative_ts", "make_zero",
-            "-y",
-            output_file
-        ]
-
-        subprocess.run(ffmpeg_cmd_fallback)
+    print(f"Extracting clip: {output_file} (Keyframe at {nearest_keyframe})")
+    subprocess.run(ffmpeg_cmd)
 
 # Check if parent folder is provided
 if len(sys.argv) < 2:
@@ -90,6 +132,8 @@ for video_file in video_files:
         continue
 
     print(f"Processing {video_file} with {chapter_file}")
+    # keyframes = get_keyframes(video_path)
+    keyframes = []
 
     # Read chapter markers
     with open(chapter_file, "r") as f:
@@ -128,26 +172,7 @@ for video_file in video_files:
         clip_duration = end_time - start_time
         output_file = os.path.join(output_folder, f"{video_name}_{index+1}_{description.replace(' ', '_')}.mp4")
         clip_files.append(output_file)
-        extract_clip(video_path, start_time, clip_duration, output_file)
-
-        # # FFmpeg command
-        # ffmpeg_cmd = [
-        #     "ffmpeg",
-        #     "-i", video_path,
-        #     "-ss", seconds_to_time(start_time),
-        #     "-t", str(clip_duration),
-        #     "-map", "0:v", "-map", "0:a:0",
-        #     "-c:v", "copy",
-        #     "-c:a", "copy",  # Use stream copy for audio
-        #     "-reset_timestamps", "1",
-        #     "-avoid_negative_ts", "make_zero",
-        #     "-y",
-        #     output_file
-        # ]
-
-
-        # # Execute the command
-        # subprocess.run(ffmpeg_cmd)
+        extract_clip(video_path, start_time, clip_duration, output_file, keyframes)
 
     print(f"Clips extracted successfully for {video_name}!")
 

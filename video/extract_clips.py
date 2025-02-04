@@ -1,5 +1,6 @@
 import os
 import sys
+import random
 import subprocess
 
 OVERLAPPING_BUFFER_START = 120
@@ -48,7 +49,7 @@ def get_keyframes(video_path, duration_limit=1800):
     Extracts keyframe timestamps from the first `duration_limit` seconds of the video.
     This speeds up scanning for large files.
     """
-    print(f"Getting Keyframes for {video_path} with duration {duration_limit}")
+    print(f"Getting Keyframes for {video_path} with duration {duration_limit}\n")
     cmd = [
         "ffprobe", "-select_streams", "v",
         "-show_frames", "-show_entries", "frame=pkt_pts_time,pict_type",
@@ -75,7 +76,7 @@ def get_nearest_keyframe(target_time, keyframes):
     """
     Finds the nearest keyframe before the target time.
     """
-    print(f"Finding the nearest keyframe")
+    print(f"Finding the nearest keyframe\n")
     keyframes_before_target = [k for k in keyframes if k <= target_time]
 
     if keyframes_before_target:
@@ -89,15 +90,95 @@ def get_nearest_keyframe(target_time, keyframes):
 
     return nearest_keyframe
 
+def check_if_output_file_is_created(result, output_file):
+    # Check if output file was created
+    if not os.path.exists(output_file) or os.path.getsize(output_file) == 0:
+        print(f"Error: Failed to create {output_file}\n")
+        print(result.stderr.decode())  # Print FFmpeg error
+        return False
+
+    return True
+
+def get_random_transition():
+    """
+    Returns a random transition effect for merging clips inside a merged timestamp range.
+    """
+    transitions = ["fade", "slideleft", "slideright", "slideup", "slidedown", "circleopen", "circleclose", "rectcrop"]
+    return random.choice(transitions)
+
+def merge_segments_with_transitions(segment_files, output_file):
+    """
+    Merges segments within a merged timestamp range using different transitions for video and audio.
+    Fixes audio sync issues and applies transitions at the correct time.
+    """
+    if len(segment_files) == 1:
+        result = subprocess.run(["ffmpeg", "-i", segment_files[0], "-c:v", "copy", "-c:a", "copy", output_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return check_if_output_file_is_created(result, output_file)
+
+    transition_duration = 1  # 1-second transition
+    filter_complex = ""
+    input_files = []
+    video_chain = []
+    audio_chain = []
+    clip_durations = []
+
+        # Get duration of each clip
+    for i, segment in enumerate(segment_files):
+        input_files.append(f"-i {segment}")
+        probe_cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=duration", "-of", "csv=p=0", segment]
+        result = subprocess.run(probe_cmd, capture_output=True, text=True)
+        
+        try:
+            duration = float(result.stdout.strip())  # Extract duration
+        except ValueError:
+            print(f"Error retrieving duration for {segment}, defaulting to 5s")
+            duration = 5  # Default fallback
+        
+        clip_durations.append(duration)
+
+    for i in range(len(segment_files) - 1):
+        transition = get_random_transition()
+        video_out = f"v{i+1}"
+        # audio_out = f"a{i+1}"
+
+        # Set transition offset to the **end of the previous clip minus transition duration**
+        offset = max(0, clip_durations[i] - transition_duration)
+
+        # Apply `xfade` for video transitions
+        filter_complex += f"[{i}:v:0]fps=60,setpts=PTS-STARTPTS[{i}v];[{i+1}:v:0]fps=60,setpts=PTS-STARTPTS[{i+1}v];"
+        filter_complex += f"[{i}v][{i+1}v]xfade=transition={transition}:duration={transition_duration}:offset={offset}[{video_out}];"
+
+        # Apply `acrossfade` for audio transitions
+        # filter_complex += f"[{i}:a:0]asetpts=PTS-STARTPTS,aresample=async=1[{i}a];[{i+1}:a:0]asetpts=PTS-STARTPTS,aresample=async=1[{i+1}a];"
+        # filter_complex += f"[{i}a][{i+1}a]acrossfade=d={transition_duration}[{audio_out}];"
+
+        video_chain.append(video_out)
+        # audio_chain.append(audio_out)
+
+    # Ensure the final video and audio mappings
+    final_video_stream = f"[{video_chain[-1]}]"
+    # final_audio_stream = f"[{audio_chain[-1]}]"
+
+    # Final FFmpeg merge command
+    # ffmpeg_cmd = f"ffmpeg {' '.join(input_files)} -filter_complex \"{filter_complex}\" -map {final_video_stream} -map {final_audio_stream} -c:v libx264 -c:a aac -b:a 192k {output_file}"
+    ffmpeg_cmd = f"ffmpeg {' '.join(input_files)} -filter_complex \"{filter_complex}\" -map {final_video_stream} -c:v libx264 -r 60 -c:a copy {output_file}"
+
+    print(f"Running FFmpeg for merging segments with transitions: {ffmpeg_cmd}\n")
+    result = subprocess.run(ffmpeg_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return check_if_output_file_is_created(result, output_file)
 
 
 def extract_clip(video_path, start_time, clip_duration, output_file, keyframes):
     """
     Extracts a clip at the nearest keyframe to prevent audio delay.
     """
+
+    if start_time < 0:
+        start_time = 0
+
     nearest_keyframe = start_time
     # nearest_keyframe = get_nearest_keyframe(start_time, keyframes)
-    # print(f"Adjusting start time: {start_time} → {nearest_keyframe}")
+    # print(f"Adjusting start time: {start_time} → {nearest_keyframe}\n")
 
     # Ensure start time is even
     if nearest_keyframe % 2 != 0:
@@ -107,7 +188,12 @@ def extract_clip(video_path, start_time, clip_duration, output_file, keyframes):
     if clip_duration % 2 != 0:
         clip_duration += 1  # Make duration an even number
 
-    print(f"Adjusting start time: {nearest_keyframe} (forcing even timestamp)")
+    # Ensure duration is valid
+    if clip_duration <= 0:
+        print(f"Skipping {output_file}: Invalid duration ({clip_duration}s)\n")
+        return False
+
+    print(f"Adjusting start time: {nearest_keyframe} (forcing even timestamp)\n")
 
     ffmpeg_cmd = [
         "ffmpeg",
@@ -124,19 +210,49 @@ def extract_clip(video_path, start_time, clip_duration, output_file, keyframes):
         output_file
     ]
 
-    print(f"Extracting clip: {output_file} (Keyframe at {nearest_keyframe})")
-    subprocess.run(ffmpeg_cmd)
+    print(f"Extracting clip: {output_file} (Keyframe at {nearest_keyframe})\n")
+    result = subprocess.run(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return check_if_output_file_is_created(result, output_file)
 
-def extract_clips(video_path, video_name, merged_intervals, keyframes):
+def extract_clips(video_path, video_name, merged_intervals, segment_map, keyframes):
     # Process each merged clip with FFmpeg
     clip_files = []
     for index, (start_time, end_time, description) in enumerate(merged_intervals):
         clip_duration = end_time - start_time
         output_file = os.path.join(output_folder, f"{video_name}_{index+1}_{description.replace(' ', '_')}.mp4")
-        clip_files.append(output_file)
-        extract_clip(video_path, start_time, clip_duration, output_file, keyframes)
+        if extract_clip(video_path, start_time, clip_duration, output_file, keyframes):
+            clip_files.append(output_file)
+        
+        # # Get stored segment timestamps
+        # segment_timestamps = segment_map.get((start_time, end_time), [])
 
-    print(f"Clips extracted successfully for {video_name}!")
+        # print(f"Segmented Timestamps = {segment_timestamps}\n")
+
+        # # If multiple timestamps were merged, extract them as segments
+        # if len(segment_timestamps) > 1:
+        #     segment_files = []
+        #     for i, ts in enumerate(segment_timestamps):
+        #         next_ts = segment_timestamps[i + 1] if i + 1 < len(segment_timestamps) else end_time
+        #         segment_duration = next_ts - ts
+        #         file_name = f"{video_name}_segment_{index+1}_{i}.mp4"
+        #         print(f"Extracting {file_name} for duration {segment_duration} ({next_ts} - {ts})\n")
+
+        #         temp_segment_file = os.path.join(output_folder, file_name)
+
+        #         # Extract individual segments
+        #         if extract_clip(video_path, ts, segment_duration, temp_segment_file, keyframes):
+        #             segment_files.append(temp_segment_file)
+
+        #     # Apply different transitions between segments
+        #     merged_clip_file = os.path.join(output_folder, f"{video_name}_merged_{index+1}.mp4")
+        #     merge_segments_with_transitions(segment_files, merged_clip_file)
+
+        #     clip_files.append(merged_clip_file)
+        # else:
+        #     if extract_clip(video_path, start_time, clip_duration, output_file, keyframes):
+        #         clip_files.append(output_file) 
+
+    print(f"Clips extracted successfully for {video_name}!\n")
     return clip_files
 
 def merge_overlapping_timestamps(timestamps):
@@ -147,15 +263,17 @@ def merge_overlapping_timestamps(timestamps):
     - Ensures no redundant clips are created due to minor gaps.
     """
     if not timestamps:
-        return []
+        return [], {}
 
     # Sort timestamps to ensure sequential merging
     timestamps.sort()
 
     merged_intervals = []
+    segment_map = {}  # Store segment timestamps for each merged interval
     current_start = max(0, timestamps[0][0] - OVERLAPPING_BUFFER_START)
     current_end = timestamps[0][0] + OVERLAPPING_BUFFER_END
     current_descriptions = {timestamps[0][1]}  # Store unique descriptions
+    current_segments = [timestamps[0][0]]
 
     for i in range(1, len(timestamps)):
         ts, desc = timestamps[i]
@@ -165,21 +283,24 @@ def merge_overlapping_timestamps(timestamps):
         if adjusted_start <= current_end: # Extend end time if needed
             current_end = max(current_end, ts + OVERLAPPING_BUFFER_END)  # Extend end time if needed
             current_descriptions.add(desc)  # Add unique descriptions
+            current_segments.append(adjusted_start)  # Register new segment timestamp
         else:
             # Store previous interval
             merged_intervals.append((current_start, current_end, "_".join(sorted(current_descriptions))))
-
+            segment_map[(current_start, current_end)] = current_segments[:]  # Save segment timestamps
             # Start new segment
-            current_start = max(0, ts - OVERLAPPING_BUFFER_START)
-            current_end = ts + OVERLAPPING_BUFFER_END
+            current_start = max(0, adjusted_start - OVERLAPPING_BUFFER_START)
+            current_end = adjusted_start + OVERLAPPING_BUFFER_END
             current_descriptions = {desc}  # Reset description storage
+            current_segments = [adjusted_start]
 
     # Add last segment
     merged_intervals.append((current_start, current_end, "_".join(sorted(current_descriptions))))
+    segment_map[(current_start, current_end)] = current_segments[:] 
     
-    return merged_intervals
+    return merged_intervals, segment_map
 
-def merge_clips(clip_files):
+def merge_clips(video_name, clip_files):
     # ------------------ Merging Process ------------------
     current_batch = []
     current_duration = 0
@@ -245,7 +366,7 @@ def merge_clips(clip_files):
         ]
 
         subprocess.run(merge_cmd)
-        print(f"Merged video created: {merged_output}")
+        print(f"Merged video created: {merged_output}\n")
 
 def process_videos():
     # Find all video files in the parent folder
@@ -263,17 +384,17 @@ def process_videos():
 
         # Check if the corresponding chapter file exists
         if not os.path.exists(chapter_file):
-            print(f"Skipping {video_file}: No chapter file found ({video_name}_chapters.txt)")
+            print(f"Skipping {video_file}: No chapter file found ({video_name}_chapters.txt)\n")
             continue
 
-        print(f"Processing {video_file} with {chapter_file}")
+        print(f"Processing {video_file} with {chapter_file}\n")
         # keyframes = get_keyframes(video_path)
         keyframes = []
 
         timestamps = extract_timestamps(chapter_file)
-        merged_intervals = merge_overlapping_timestamps(timestamps)
-        clip_files = extract_clips(video_path, video_name, merged_intervals, keyframes)
-        merge_clips(clip_files)
+        merged_intervals, segment_map = merge_overlapping_timestamps(timestamps)
+        clip_files = extract_clips(video_path, video_name, merged_intervals, segment_map, keyframes)
+        merge_clips(video_name, clip_files)
     print("All videos processed successfully!")
 
 process_videos()

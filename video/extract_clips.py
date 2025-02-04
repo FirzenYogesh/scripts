@@ -2,7 +2,11 @@ import os
 import sys
 import subprocess
 
-OVERLAPPING_BUFFER_RANGE = 120
+OVERLAPPING_BUFFER_START = 120
+OVERLAPPING_BUFFER_END = 60
+    # Maximum duration for merged videos (8 minutes = 480 seconds)
+MAX_VIDEO_DURATION = 480
+BUFFER_DURATION = 30  # Allow up to a max of 8:30 (510 seconds)
 
 def get_keyframes(video_path, duration_limit=1800):
     """
@@ -113,6 +117,38 @@ def seconds_to_time(seconds):
     s = seconds % 60
     return f"{h:02}:{m:02}:{s:02}"
 
+def merge_overlapping_timestamps(timestamps):
+    """
+    Merges overlapping or closely spaced timestamps into single segments.
+    """
+    if not timestamps:
+        return []
+    # Merge overlapping timestamps
+    merged_intervals = []
+    current_start = max(0, timestamps[0][0] - OVERLAPPING_BUFFER_START)  # Start 60 sec before first timestamp
+    current_end = timestamps[0][0] + OVERLAPPING_BUFFER_END  # Default end time is first timestamp
+    current_descriptions = {timestamps[0][1]}  # Store description
+
+    for i in range(1, len(timestamps)):
+        ts, desc = timestamps[i]
+
+        # If the timestamp overlaps with the previous (within the same range)
+        if ts <= current_end + OVERLAPPING_BUFFER_END:  # Overlapping or within buffer range
+            current_end = ts + OVERLAPPING_BUFFER_END  # Extend end time
+            current_descriptions.add(desc)  # Merge descriptions
+        else:
+            # Store the previous range
+            merged_intervals.append((current_start, current_end + OVERLAPPING_BUFFER_END, "_".join(sorted(current_descriptions))))
+            # Start a new range
+            current_start = max(0, ts - OVERLAPPING_BUFFER_START)
+            current_end = ts + OVERLAPPING_BUFFER_END
+            current_descriptions = {desc}  # Reset description
+
+    # Add the last range
+    merged_intervals.append((current_start, current_end, "_".join(sorted(current_descriptions))))
+    
+    return merged_intervals
+
 # Find all video files in the parent folder
 video_files = [f for f in os.listdir(parent_folder) if f.endswith((".mp4", ".mkv", ".mov"))]
 
@@ -143,29 +179,7 @@ for video_file in video_files:
     timestamps = [(time_to_seconds(line[0]), line[1]) for line in lines]
     timestamps.sort()
 
-    # Merge overlapping timestamps
-    merged_intervals = []
-    current_start = max(0, timestamps[0][0] - 60)  # Start 60 sec before first timestamp
-    current_end = timestamps[0][0]  # Default end time is first timestamp
-    current_desc = timestamps[0][1]  # Description for naming
-
-    for i in range(1, len(timestamps)):
-        ts, desc = timestamps[i]
-
-        # If the timestamp overlaps with the previous (within the same range)
-        if ts <= current_end + 60:  # Overlapping or within buffer range
-            current_end = max(current_end, ts)  # Extend the end time
-        else:
-            # Store the previous range
-            merged_intervals.append((current_start, current_end + 60, current_desc))
-            # Start a new range
-            current_start = max(0, ts - 60)
-            current_end = ts
-            current_desc = desc
-
-    # Add the last range
-    merged_intervals.append((current_start, current_end + 60, current_desc))
-
+    merged_intervals = merge_overlapping_timestamps(timestamps)
     # Process each merged clip with FFmpeg
     clip_files = []
     for index, (start_time, end_time, description) in enumerate(merged_intervals):
@@ -177,10 +191,6 @@ for video_file in video_files:
     print(f"Clips extracted successfully for {video_name}!")
 
     # ------------------ Merging Process ------------------
-
-    # Maximum duration for merged videos (8 minutes = 480 seconds)
-    MAX_VIDEO_DURATION = 480
-    BUFFER_DURATION = 30  # Allow up to a max of 8:30 (510 seconds)
     current_batch = []
     current_duration = 0
     batch_number = 1

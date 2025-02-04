@@ -201,8 +201,8 @@ def merge_overlapping_timestamps(timestamps):
             merged_intervals.append((current_start, current_end, "_".join(sorted(current_descriptions))))
             segment_map[(current_start, current_end)] = current_segments[:]  # Save segment timestamps
             # Start new segment
-            current_start = max(0, adjusted_start - OVERLAPPING_BUFFER_START)
-            current_end = adjusted_start + OVERLAPPING_BUFFER_END
+            current_start = max(0, ts - OVERLAPPING_BUFFER_START)
+            current_end = ts + OVERLAPPING_BUFFER_END
             current_descriptions = {desc}  # Reset description storage
             current_segments = [adjusted_start]
 

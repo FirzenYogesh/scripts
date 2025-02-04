@@ -1,20 +1,30 @@
 import os
 import sys
 import random
+import argparse
 import subprocess
 
-OVERLAPPING_BUFFER_START = 120
-OVERLAPPING_BUFFER_END = 60
+DEFAULT_OVERLAPPING_BUFFER_START = 120
+DEFAULT_OVERLAPPING_BUFFER_END = 60
     # Maximum duration for merged videos (8 minutes = 480 seconds)
-MAX_VIDEO_DURATION = 480
+DEFAULT_MAX_VIDEO_DURATION = 480
 BUFFER_DURATION = 30  # Allow up to a max of 8:30 (510 seconds)
 
-# Check if parent folder is provided
-if len(sys.argv) < 2:
-    print("Usage: python extract_clips.py <parent_folder>")
-    sys.exit(1)
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="Extract clips from videos with configurable buffers.")
+parser.add_argument("parent_folder", help="Parent folder containing video files and chapter files")
+parser.add_argument("--overlap-start-buffer", type=int, default=DEFAULT_OVERLAPPING_BUFFER_START, help="Start buffer time in seconds (default: 120s)")
+parser.add_argument("--overlap-end-buffer", type=int, default=DEFAULT_OVERLAPPING_BUFFER_END, help="End buffer time in seconds (default: 60s)")
+parser.add_argument("--max-video-duration", type=int, default=DEFAULT_MAX_VIDEO_DURATION, help="Max Video Duration time in seconds (default: 480)")
 
-parent_folder = sys.argv[1]
+args = parser.parse_args()
+
+# Use provided buffer values or defaults
+OVERLAPPING_BUFFER_START = args.overlap_start_buffer
+OVERLAPPING_BUFFER_END = args.overlap_end_buffer
+MAX_VIDEO_DURATION = args.max_video_duration
+
+parent_folder = args.parent_folder
 
 # Ensure output folders exist
 output_folder = os.path.join(parent_folder, "clips")

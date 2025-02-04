@@ -120,31 +120,39 @@ def seconds_to_time(seconds):
 def merge_overlapping_timestamps(timestamps):
     """
     Merges overlapping or closely spaced timestamps into single segments.
+    - Start time is OVERLAPPING_BUFFER_START before the first timestamp.
+    - End time is OVERLAPPING_BUFFER_END after the last overlapping timestamp.
+    - Ensures no redundant clips are created due to minor gaps.
     """
     if not timestamps:
         return []
-    # Merge overlapping timestamps
+
+    # Sort timestamps to ensure sequential merging
+    timestamps.sort()
+
     merged_intervals = []
-    current_start = max(0, timestamps[0][0] - OVERLAPPING_BUFFER_START)  # Start 60 sec before first timestamp
-    current_end = timestamps[0][0] + OVERLAPPING_BUFFER_END  # Default end time is first timestamp
-    current_descriptions = {timestamps[0][1]}  # Store description
+    current_start = max(0, timestamps[0][0] - OVERLAPPING_BUFFER_START)
+    current_end = timestamps[0][0] + OVERLAPPING_BUFFER_END
+    current_descriptions = {timestamps[0][1]}  # Store unique descriptions
 
     for i in range(1, len(timestamps)):
         ts, desc = timestamps[i]
+        adjusted_start = max(0, ts - OVERLAPPING_BUFFER_START)  # Actual start time for this timestamp
 
-        # If the timestamp overlaps with the previous (within the same range)
-        if ts <= current_end + OVERLAPPING_BUFFER_END:  # Overlapping or within buffer range
-            current_end = ts + OVERLAPPING_BUFFER_END  # Extend end time
-            current_descriptions.add(desc)  # Merge descriptions
+        # If adjusted start overlaps or falls within the current merged range
+        if adjusted_start <= current_end: # Extend end time if needed
+            current_end = max(current_end, ts + OVERLAPPING_BUFFER_END)  # Extend end time if needed
+            current_descriptions.add(desc)  # Add unique descriptions
         else:
-            # Store the previous range
-            merged_intervals.append((current_start, current_end + OVERLAPPING_BUFFER_END, "_".join(sorted(current_descriptions))))
-            # Start a new range
+            # Store previous interval
+            merged_intervals.append((current_start, current_end, "_".join(sorted(current_descriptions))))
+
+            # Start new segment
             current_start = max(0, ts - OVERLAPPING_BUFFER_START)
             current_end = ts + OVERLAPPING_BUFFER_END
-            current_descriptions = {desc}  # Reset description
+            current_descriptions = {desc}  # Reset description storage
 
-    # Add the last range
+    # Add last segment
     merged_intervals.append((current_start, current_end, "_".join(sorted(current_descriptions))))
     
     return merged_intervals

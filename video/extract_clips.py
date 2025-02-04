@@ -15,6 +15,7 @@ parser.add_argument("parent_folder", help="Parent folder containing video files 
 parser.add_argument("--overlap-start-buffer", type=int, default=DEFAULT_OVERLAPPING_BUFFER_START, help="Start buffer time in seconds (default: 120s)")
 parser.add_argument("--overlap-end-buffer", type=int, default=DEFAULT_OVERLAPPING_BUFFER_END, help="End buffer time in seconds (default: 60s)")
 parser.add_argument("--max-video-duration", type=int, default=DEFAULT_MAX_VIDEO_DURATION, help="Max Video Duration time in seconds (default: 480)")
+parser.add_argument('--merge-extracted-clips', default=False, action='store_true')
 
 args = parser.parse_args()
 
@@ -306,7 +307,8 @@ def process_videos():
         timestamps = extract_timestamps(chapter_file)
         merged_intervals, segment_map = merge_overlapping_timestamps(timestamps)
         clip_files = extract_clips(video_path, video_name, merged_intervals, segment_map, keyframes)
-        merge_clips(video_name, clip_files)
+        if args.merge_extracted_clips:
+            merge_clips(video_name, clip_files)
     print("All videos processed successfully!")
 
 process_videos()

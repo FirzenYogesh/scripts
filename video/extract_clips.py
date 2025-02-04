@@ -4,7 +4,7 @@ import argparse
 import subprocess
 
 DEFAULT_OVERLAPPING_BUFFER_START = 120
-DEFAULT_OVERLAPPING_BUFFER_END = 60
+DEFAULT_OVERLAPPING_BUFFER_END = 120
     # Maximum duration for merged videos (8 minutes = 480 seconds)
 DEFAULT_MAX_VIDEO_DURATION = 480
 BUFFER_DURATION = 30  # Allow up to a max of 8:30 (510 seconds)

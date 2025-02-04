@@ -8,6 +8,41 @@ OVERLAPPING_BUFFER_END = 60
 MAX_VIDEO_DURATION = 480
 BUFFER_DURATION = 30  # Allow up to a max of 8:30 (510 seconds)
 
+# Check if parent folder is provided
+if len(sys.argv) < 2:
+    print("Usage: python extract_clips.py <parent_folder>")
+    sys.exit(1)
+
+parent_folder = sys.argv[1]
+
+# Ensure output folders exist
+output_folder = os.path.join(parent_folder, "clips")
+merged_folder = os.path.join(parent_folder, "merged_videos")
+os.makedirs(output_folder, exist_ok=True)
+os.makedirs(merged_folder, exist_ok=True)
+
+# Function to convert timestamp to seconds
+def time_to_seconds(timestamp):
+    h, m, s = map(int, timestamp.split(":"))
+    return h * 3600 + m * 60 + s
+
+# Function to convert seconds to timestamp
+def seconds_to_time(seconds):
+    h = seconds // 3600
+    m = (seconds % 3600) // 60
+    s = seconds % 60
+    return f"{h:02}:{m:02}:{s:02}"
+
+def extract_timestamps(chapter_file):
+    # Read chapter markers
+    with open(chapter_file, "r") as f:
+        lines = [line.strip().split(" - ") for line in f.readlines() if " - " in line]
+
+    # Convert timestamps to seconds and sort them
+    timestamps = [(time_to_seconds(line[0]), line[1]) for line in lines]
+    timestamps.sort()
+    return timestamps
+
 def get_keyframes(video_path, duration_limit=1800):
     """
     Extracts keyframe timestamps from the first `duration_limit` seconds of the video.
@@ -92,30 +127,17 @@ def extract_clip(video_path, start_time, clip_duration, output_file, keyframes):
     print(f"Extracting clip: {output_file} (Keyframe at {nearest_keyframe})")
     subprocess.run(ffmpeg_cmd)
 
-# Check if parent folder is provided
-if len(sys.argv) < 2:
-    print("Usage: python extract_clips.py <parent_folder>")
-    sys.exit(1)
+def extract_clips(video_path, video_name, merged_intervals, keyframes):
+    # Process each merged clip with FFmpeg
+    clip_files = []
+    for index, (start_time, end_time, description) in enumerate(merged_intervals):
+        clip_duration = end_time - start_time
+        output_file = os.path.join(output_folder, f"{video_name}_{index+1}_{description.replace(' ', '_')}.mp4")
+        clip_files.append(output_file)
+        extract_clip(video_path, start_time, clip_duration, output_file, keyframes)
 
-parent_folder = sys.argv[1]
-
-# Ensure output folders exist
-output_folder = os.path.join(parent_folder, "clips")
-merged_folder = os.path.join(parent_folder, "merged_videos")
-os.makedirs(output_folder, exist_ok=True)
-os.makedirs(merged_folder, exist_ok=True)
-
-# Function to convert timestamp to seconds
-def time_to_seconds(timestamp):
-    h, m, s = map(int, timestamp.split(":"))
-    return h * 3600 + m * 60 + s
-
-# Function to convert seconds to timestamp
-def seconds_to_time(seconds):
-    h = seconds // 3600
-    m = (seconds % 3600) // 60
-    s = seconds % 60
-    return f"{h:02}:{m:02}:{s:02}"
+    print(f"Clips extracted successfully for {video_name}!")
+    return clip_files
 
 def merge_overlapping_timestamps(timestamps):
     """
@@ -157,47 +179,7 @@ def merge_overlapping_timestamps(timestamps):
     
     return merged_intervals
 
-# Find all video files in the parent folder
-video_files = [f for f in os.listdir(parent_folder) if f.endswith((".mp4", ".mkv", ".mov"))]
-
-if not video_files:
-    print("No video files found in the folder.")
-    sys.exit(1)
-
-# Process each video file
-for video_file in video_files:
-    video_path = os.path.join(parent_folder, video_file)
-    video_name = os.path.splitext(video_file)[0]
-    chapter_file = os.path.join(parent_folder, f"{video_name}_chapters.txt")
-
-    # Check if the corresponding chapter file exists
-    if not os.path.exists(chapter_file):
-        print(f"Skipping {video_file}: No chapter file found ({video_name}_chapters.txt)")
-        continue
-
-    print(f"Processing {video_file} with {chapter_file}")
-    # keyframes = get_keyframes(video_path)
-    keyframes = []
-
-    # Read chapter markers
-    with open(chapter_file, "r") as f:
-        lines = [line.strip().split(" - ") for line in f.readlines() if " - " in line]
-
-    # Convert timestamps to seconds and sort them
-    timestamps = [(time_to_seconds(line[0]), line[1]) for line in lines]
-    timestamps.sort()
-
-    merged_intervals = merge_overlapping_timestamps(timestamps)
-    # Process each merged clip with FFmpeg
-    clip_files = []
-    for index, (start_time, end_time, description) in enumerate(merged_intervals):
-        clip_duration = end_time - start_time
-        output_file = os.path.join(output_folder, f"{video_name}_{index+1}_{description.replace(' ', '_')}.mp4")
-        clip_files.append(output_file)
-        extract_clip(video_path, start_time, clip_duration, output_file, keyframes)
-
-    print(f"Clips extracted successfully for {video_name}!")
-
+def merge_clips(clip_files):
     # ------------------ Merging Process ------------------
     current_batch = []
     current_duration = 0
@@ -265,4 +247,33 @@ for video_file in video_files:
         subprocess.run(merge_cmd)
         print(f"Merged video created: {merged_output}")
 
-print("All videos processed successfully!")
+def process_videos():
+    # Find all video files in the parent folder
+    video_files = [f for f in os.listdir(parent_folder) if f.endswith((".mp4", ".mkv", ".mov"))]
+
+    if not video_files:
+        print("No video files found in the folder.")
+        sys.exit(1)
+
+    # Process each video file
+    for video_file in video_files:
+        video_path = os.path.join(parent_folder, video_file)
+        video_name = os.path.splitext(video_file)[0]
+        chapter_file = os.path.join(parent_folder, f"{video_name}_chapters.txt")
+
+        # Check if the corresponding chapter file exists
+        if not os.path.exists(chapter_file):
+            print(f"Skipping {video_file}: No chapter file found ({video_name}_chapters.txt)")
+            continue
+
+        print(f"Processing {video_file} with {chapter_file}")
+        # keyframes = get_keyframes(video_path)
+        keyframes = []
+
+        timestamps = extract_timestamps(chapter_file)
+        merged_intervals = merge_overlapping_timestamps(timestamps)
+        clip_files = extract_clips(video_path, video_name, merged_intervals, keyframes)
+        merge_clips(clip_files)
+    print("All videos processed successfully!")
+
+process_videos()

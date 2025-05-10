@@ -31,6 +31,20 @@ fi
 
 echo "🎞️ Input codec: $INPUT_CODEC_RAW | normalized: $INPUT_CODEC | width: $INPUT_WIDTH px"
 
+# 🔍 Detect vaapi card
+detect_vaapi_card() {
+  for card in /dev/dri/card*; do
+    if ffmpeg -hide_banner -init_hw_device vaapi=va:$card -filter_hw_device va \
+       -f lavfi -i nullsrc -t 1 \
+       -vf "format=nv12,hwupload,scale_vaapi=w=640:h=360" \
+       -f null - 2>/dev/null; then
+      echo "$card"
+      return
+    fi
+  done
+  echo "renderD128"
+}
+
 # 🔍 Detect encoder
 detect_encoder() {
   if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -39,7 +53,7 @@ detect_encoder() {
     echo "hevc_nvenc"
   elif ffmpeg -hide_banner -encoders 2>/dev/null | grep -q hevc_amf; then
     echo "hevc_amf"
-  elif ffmpeg -hide_banner -encoders 2>/dev/null | grep -q hevc_qsv; then
+  elif ffmpeg -hide_banner -encoders | grep -q hevc_qsv && ffmpeg -init_hw_device qsv=hw:0 2>/dev/null; then
     echo "hevc_qsv"
   elif ffmpeg -hide_banner -encoders 2>/dev/null | grep -q hevc_vaapi; then
     echo "hevc_vaapi"
@@ -56,6 +70,14 @@ for i in "${!RES_NAMES[@]}"; do
   RES="${RES_NAMES[$i]}"
   WIDTH="${RES_WIDTHS[$i]}"
   OUTPUT="$DIR/${BASENAME} - ${RES} HEVC.mkv"
+  VIDEO_FORMAT="scale=$WIDTH:-2"
+  ENCODER_MODIFIER=""
+
+  if [[ "$ENCODER" == "hevc_vaapi" ]]; then
+    ENCODER_DEVICE=$(detect_vaapi_card)
+    VIDEO_FORMAT="format=nv12,hwupload,scale_vaapi=w=$WIDTH:h=-2"
+    ENCODER_MODIFIER=(-init_hw_device vaapi=va:$ENCODER_DEVICE -filter_hw_device va)
+  fi
 
   # Skip upscaling
   if [[ "$WIDTH" -gt "$INPUT_WIDTH" ]]; then
@@ -76,8 +98,10 @@ for i in "${!RES_NAMES[@]}"; do
 
   echo "🎬 Encoding $RES to $OUTPUT..."
 
-  ffmpeg -hide_banner -y -i "$INPUT" \
-    -vf "scale=$WIDTH:-2" \
+  ffmpeg -hide_banner -y \
+    "${ENCODER_MODIFIER[@]}" \
+    -i "$INPUT" \
+    -vf "$VIDEO_FORMAT" \
     -map 0 \
     -c:v "$ENCODER" \
     -q:v "$QUALITY" \

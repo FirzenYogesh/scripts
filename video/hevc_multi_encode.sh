@@ -3,11 +3,15 @@
 # 🎬 Usage: ./hevc_multi_encode_smart.sh <video_file> [quality]
 INPUT="$1"
 QUALITY="${2:-30}"  # Optional quality override, default to 30
+USER_ENCODER="$3"
 
 if [ -z "$INPUT" ] || [ ! -f "$INPUT" ]; then
   echo "❌ Usage: $0 <video_file> [quality]"
   exit 1
 fi
+
+command -v ffmpeg >/dev/null || { echo "❌ ffmpeg not found"; exit 1; }
+command -v ffprobe >/dev/null || { echo "❌ ffprobe not found"; exit 1; }
 
 # 📁 Path and name extraction
 DIR=$(dirname "$INPUT")
@@ -23,48 +27,78 @@ INPUT_WIDTH=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -o
 INPUT_CODEC_RAW=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$INPUT")
 
 # 🧠 Normalize codec name
-if [[ "$INPUT_CODEC_RAW" == *265 || "$INPUT_CODEC_RAW" == "hevc" ]]; then
-  INPUT_CODEC="hevc"
-else
-  INPUT_CODEC="other"
-fi
+INPUT_CODEC="other"
+[[ "$INPUT_CODEC_RAW" == *265 || "$INPUT_CODEC_RAW" == "hevc" ]] && INPUT_CODEC="hevc"
 
 echo "🎞️ Input codec: $INPUT_CODEC_RAW | normalized: $INPUT_CODEC | width: $INPUT_WIDTH px"
 
+vaapi_dry_run() {
+  if ffmpeg -hide_banner -init_hw_device vaapi=va:$1 -filter_hw_device va -f lavfi -i nullsrc -t 1 -vf "format=nv12,hwupload,scale_vaapi=w=640:h=360" -f null - 2>/dev/null; then
+    echo "yes"
+  else
+    echo ""
+  fi
+}
+
 # 🔍 Detect vaapi card
 detect_vaapi_card() {
-  for card in /dev/dri/card*; do
-    if ffmpeg -hide_banner -init_hw_device vaapi=va:$card -filter_hw_device va \
-       -f lavfi -i nullsrc -t 1 \
-       -vf "format=nv12,hwupload,scale_vaapi=w=640:h=360" \
-       -f null - 2>/dev/null; then
-      echo "$card"
-      return
-    fi
-  done
-  echo "renderD128"
+  local default_vaapi="/dev/dri/renderD128"
+  if [[ -n $(vaapi_dry_run $default_vaapi) ]]; then
+    echo "$default_vaapi"
+  else
+    for card in /dev/dri/card*; do
+      if [[ -n $(vaapi_dry_run $card) ]]; then
+        echo "$card"
+        return
+      fi
+    done
+  fi
+  echo ""
+}
+
+# 🔍 Check if encoder exists
+check_if_encoder_exists() {
+  local short=$1
+  if ffmpeg -hide_banner -encoders 2>/dev/null | grep -q "hevc_${short}"; then
+    echo "hevc_${short}"
+  else
+    echo ""
+  fi
 }
 
 # 🔍 Detect encoder
 detect_encoder() {
   if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "hevc_videotoolbox"
-  elif command -v nvidia-smi &>/dev/null; then
+  elif [[ -n $(check_if_encoder_exists nvenc) ]] && command -v nvidia-smi &>/dev/null; then
     echo "hevc_nvenc"
-  elif ffmpeg -hide_banner -encoders 2>/dev/null | grep -q hevc_amf; then
+  elif [[ -n $(check_if_encoder_exists amf) ]]; then
     echo "hevc_amf"
-  elif ffmpeg -hide_banner -encoders | grep -q hevc_qsv && ffmpeg -init_hw_device qsv=hw:0 2>/dev/null; then
+  elif [[ -n $(check_if_encoder_exists qsv) ]] && ffmpeg -init_hw_device qsv=hw:0 2>/dev/null; then
     echo "hevc_qsv"
-  elif ffmpeg -hide_banner -encoders 2>/dev/null | grep -q hevc_vaapi; then
+  elif [[ -n $(check_if_encoder_exists vaapi) ]]; then
     echo "hevc_vaapi"
   else
     echo "libx265"
   fi
 }
 
-ENCODER=$(detect_encoder)
-echo "🧠 Using encoder: $ENCODER (quality: $QUALITY)"
+ENCODER=""
+set_encoder() {
+  if [[ -n "$USER_ENCODER" ]]; then
+    ENCODER=$(check_if_encoder_exists "$USER_ENCODER")
+  fi
+  if [[ -z "$ENCODER" ]]; then
+    echo "⚠️ Warning: hevc_$USER_ENCODER not found. Falling back to auto-detected encoder."
+    ENCODER=$(detect_encoder)
+    echo "🛠️ Fallback encoder: $ENCODER"
+  fi
+}
 
+set_encoder
+
+echo "🧠 Using encoder: $ENCODER (quality: $QUALITY)"
+TOTAL_START=$(date +%s)
 # 🔁 Loop through target resolutions
 for i in "${!RES_NAMES[@]}"; do
   RES="${RES_NAMES[$i]}"
@@ -103,6 +137,7 @@ for i in "${!RES_NAMES[@]}"; do
     exit 1
   fi
 
+  START_TIME=$(date +%s)
 
   ffmpeg -hide_banner -y \
     "${ENCODER_MODIFIER[@]}" \
@@ -117,7 +152,10 @@ for i in "${!RES_NAMES[@]}"; do
     -movflags +faststart \
     "$OUTPUT"
 
+  END_TIME=$(date +%s)
+  echo "⏱️ Encoding time: $((END_TIME - START_TIME)) seconds"
   echo "✅ Done: $OUTPUT"
 done
-
+TOTAL_END=$(date +%s)
+echo "⏱️ Total time: $((TOTAL_END - TOTAL_START)) seconds"
 echo "🎉 All applicable HEVC versions processed!"

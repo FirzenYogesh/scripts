@@ -1,11 +1,15 @@
 #!/bin/bash
 
+# 🎬 Usage: ./hevc_multi_encode_smart.sh <video_file> [quality]
 INPUT="$1"
+QUALITY="${2:-30}"  # Optional quality override, default to 30
+
 if [ -z "$INPUT" ] || [ ! -f "$INPUT" ]; then
-  echo "❌ Usage: $0 <video_file>"
+  echo "❌ Usage: $0 <video_file> [quality]"
   exit 1
 fi
 
+# 📁 Path and name extraction
 DIR=$(dirname "$INPUT")
 FILENAME=$(basename "$INPUT")
 BASENAME="${FILENAME%.*}"
@@ -14,11 +18,11 @@ BASENAME="${FILENAME%.*}"
 RES_NAMES=("1080p" "720p" "480p")
 RES_WIDTHS=(1920 1280 854)
 
-# Get input width and codec
+# 📊 Get input resolution and codec
 INPUT_WIDTH=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$INPUT")
 INPUT_CODEC_RAW=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$INPUT")
 
-# Normalize codec
+# 🧠 Normalize codec name
 if [[ "$INPUT_CODEC_RAW" == *265 || "$INPUT_CODEC_RAW" == "hevc" ]]; then
   INPUT_CODEC="hevc"
 else
@@ -27,7 +31,7 @@ fi
 
 echo "🎞️ Input codec: $INPUT_CODEC_RAW | normalized: $INPUT_CODEC | width: $INPUT_WIDTH px"
 
-# Detect encoder
+# 🔍 Detect encoder
 detect_encoder() {
   if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "hevc_videotoolbox"
@@ -43,27 +47,27 @@ detect_encoder() {
 }
 
 ENCODER=$(detect_encoder)
-echo "🧠 Detected encoder: $ENCODER"
+echo "🧠 Using encoder: $ENCODER (quality: $QUALITY)"
 
-# Process each resolution
+# 🔁 Loop through target resolutions
 for i in "${!RES_NAMES[@]}"; do
   RES="${RES_NAMES[$i]}"
   WIDTH="${RES_WIDTHS[$i]}"
   OUTPUT="$DIR/${BASENAME} - ${RES} HEVC.mkv"
 
-  # Skip up-scaling
+  # Skip upscaling
   if [[ "$WIDTH" -gt "$INPUT_WIDTH" ]]; then
-    echo "⏭️ Skipping $RES – resolution higher than source."
+    echo "⏭️ Skipping $RES – resolution is higher than input."
     continue
   fi
 
-  # Smart skip: Check if output exists and is already HEVC of the same resolution
+  # Smart skip: file exists and matches resolution & HEVC
   if [[ -f "$OUTPUT" ]]; then
     OUT_WIDTH=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$OUTPUT" 2>/dev/null)
     OUT_CODEC=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$OUTPUT" 2>/dev/null)
 
     if [[ "$OUT_CODEC" == "hevc" && "$OUT_WIDTH" -eq "$WIDTH" ]]; then
-      echo "⏭️ Skipping $RES – output already exists and is valid HEVC at target resolution."
+      echo "⏭️ Skipping $RES – output already exists and is valid HEVC."
       continue
     fi
   fi
@@ -74,12 +78,11 @@ for i in "${!RES_NAMES[@]}"; do
     -vf "scale=$WIDTH:-2" \
     -map 0 \
     -c:v "$ENCODER" \
-    -q:v 30 \
+    -q:v "$QUALITY" \
     -tag:v hvc1 \
     -c:a aac -b:a 96k \
     -c:s copy \
     -movflags +faststart \
-    -progress pipe:1 \
     "$OUTPUT"
 
   echo "✅ Done: $OUTPUT"

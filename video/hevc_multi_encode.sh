@@ -71,7 +71,7 @@ for i in "${!RES_NAMES[@]}"; do
   WIDTH="${RES_WIDTHS[$i]}"
   OUTPUT="$DIR/${BASENAME} - ${RES} HEVC.mkv"
   VIDEO_FORMAT="scale=$WIDTH:-2"
-  ENCODER_MODIFIER=""
+  ENCODER_MODIFIER=()
 
   if [[ "$ENCODER" == "hevc_vaapi" ]]; then
     ENCODER_DEVICE=$(detect_vaapi_card)
@@ -96,7 +96,13 @@ for i in "${!RES_NAMES[@]}"; do
     fi
   fi
 
-  echo "🎬 Encoding $RES to $OUTPUT..."
+  echo "🎬 Encoding $RES to $OUTPUT"
+
+  if [[ ! "$OUTPUT" =~ \.mkv$ ]]; then
+    echo "❌ OUTPUT does not look like a valid .mkv file: '$OUTPUT'"
+    exit 1
+  fi
+
 
   ffmpeg -hide_banner -y \
     "${ENCODER_MODIFIER[@]}" \

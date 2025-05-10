@@ -33,27 +33,28 @@ INPUT_CODEC="other"
 echo "🎞️ Input codec: $INPUT_CODEC_RAW | normalized: $INPUT_CODEC | width: $INPUT_WIDTH px"
 
 vaapi_dry_run() {
-  if ffmpeg -hide_banner -init_hw_device vaapi=va:$1 -filter_hw_device va -f lavfi -i nullsrc -t 1 -vf "format=nv12,hwupload,scale_vaapi=w=640:h=360" -f null - 2>/dev/null; then
-    echo "yes"
-  else
-    echo ""
-  fi
+  local vaapi_driver=$1
+  ffmpeg -hide_banner -init_hw_device vaapi=va:$vaapi_driver -filter_hw_device va \
+    -f lavfi -i nullsrc -t 1 \
+    -vf "format=nv12,hwupload,scale_vaapi=w=640:h=360" -f null - \
+    -loglevel error -nostats >/dev/null 2>&1
 }
 
 # 🔍 Detect vaapi card
 detect_vaapi_card() {
   local default_vaapi="/dev/dri/renderD128"
-  if [[ -n $(vaapi_dry_run $default_vaapi) ]]; then
+  if vaapi_dry_run "$default_vaapi"; then
     echo "$default_vaapi"
-  else
-    for card in /dev/dri/card*; do
-      if [[ -n $(vaapi_dry_run $card) ]]; then
-        echo "$card"
-        return
-      fi
-    done
+    return 0
   fi
-  echo ""
+
+  for card in /dev/dri/card*; do
+    if vaapi_dry_run "$card"; then
+      echo "$card"
+      return 0
+    fi
+  done
+  return 1
 }
 
 # 🔍 Check if encoder exists
@@ -93,6 +94,14 @@ set_encoder() {
     ENCODER=$(detect_encoder)
     echo "🛠️ Fallback encoder: $ENCODER"
   fi
+
+  if [[ "$ENCODER" == "hevc_vaapi" ]]; then
+    if ! ENCODER_DEVICE=$(detect_vaapi_card); then
+      echo "❌ No usable VAAPI device found. Falling back to libx265."
+      ENCODER="libx265"
+      ENCODER_DEVICE=""
+    fi
+  fi
 }
 
 set_encoder
@@ -106,11 +115,19 @@ for i in "${!RES_NAMES[@]}"; do
   OUTPUT="$DIR/${BASENAME} - ${RES} HEVC.mkv"
   VIDEO_FORMAT="scale=$WIDTH:-2"
   ENCODER_MODIFIER=()
+  VIDEO_QUALITY_ARGUMENT=(-q:v "$QUALITY")
 
-  if [[ "$ENCODER" == "hevc_vaapi" ]]; then
-    ENCODER_DEVICE=$(detect_vaapi_card)
+  if [[ "$ENCODER" == "hevc_vaapi" ]] && [[ -n "$ENCODER_DEVICE" ]]; then
     VIDEO_FORMAT="format=nv12,hwupload,scale_vaapi=w=$WIDTH:h=-2"
     ENCODER_MODIFIER=(-init_hw_device vaapi=va:$ENCODER_DEVICE -filter_hw_device va)
+  fi
+
+  if [[ "$ENCODER" == "hevc_nvenc" ]]; then
+    VIDEO_QUALITY_ARGUMENT=(-cq "$QUALITY" -preset slow)
+  fi
+
+  if [[ "$ENCODER" == "libx265" ]]; then
+    VIDEO_QUALITY_ARGUMENT=(-crf "$QUALITY" -preset slow)
   fi
 
   # Skip upscaling
@@ -145,7 +162,7 @@ for i in "${!RES_NAMES[@]}"; do
     -vf "$VIDEO_FORMAT" \
     -map 0 \
     -c:v "$ENCODER" \
-    -q:v "$QUALITY" \
+    "${VIDEO_QUALITY_ARGUMENT[@]}" \
     -tag:v hvc1 \
     -c:a aac -b:a 96k \
     -c:s copy \
@@ -153,7 +170,10 @@ for i in "${!RES_NAMES[@]}"; do
     "$OUTPUT"
 
   END_TIME=$(date +%s)
+  FILESIZE=$(du -h "$OUTPUT" | cut -f1)
+  
   echo "⏱️ Encoding time: $((END_TIME - START_TIME)) seconds"
+  echo "📦 File size: $FILESIZE"
   echo "✅ Done: $OUTPUT"
 done
 TOTAL_END=$(date +%s)

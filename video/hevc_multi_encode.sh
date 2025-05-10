@@ -37,6 +37,8 @@ detect_encoder() {
     echo "hevc_videotoolbox"
   elif command -v nvidia-smi &>/dev/null; then
     echo "hevc_nvenc"
+  elif ffmpeg -hide_banner -encoders 2>/dev/null | grep -q hevc_amf; then
+    echo "hevc_amf"
   elif ffmpeg -hide_banner -encoders 2>/dev/null | grep -q hevc_qsv; then
     echo "hevc_qsv"
   elif ffmpeg -hide_banner -encoders 2>/dev/null | grep -q hevc_vaapi; then

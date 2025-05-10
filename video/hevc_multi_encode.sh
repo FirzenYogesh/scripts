@@ -57,6 +57,13 @@ detect_vaapi_card() {
   return 1
 }
 
+check_qsv_available() {
+  ffmpeg -hide_banner -init_hw_device qsv=hw:0 -f lavfi -i nullsrc -t 1 \
+    -vf 'format=nv12,hwupload=extra_hw_frames=64' -f null - \
+    -loglevel error -nostats >/dev/null 2>&1
+  return $?
+}
+
 # 🔍 Check if encoder exists
 check_if_encoder_exists() {
   local short=$1
@@ -75,7 +82,7 @@ detect_encoder() {
     echo "hevc_nvenc"
   elif [[ -n $(check_if_encoder_exists amf) ]]; then
     echo "hevc_amf"
-  elif [[ -n $(check_if_encoder_exists qsv) ]] && ffmpeg -init_hw_device qsv=hw:0 2>/dev/null; then
+  elif [[ -n $(check_if_encoder_exists qsv) ]] && check_qsv_available; then
     echo "hevc_qsv"
   elif [[ -n $(check_if_encoder_exists vaapi) ]]; then
     echo "hevc_vaapi"
@@ -96,7 +103,8 @@ set_encoder() {
   fi
 
   if [[ "$ENCODER" == "hevc_vaapi" ]]; then
-    if ! ENCODER_DEVICE=$(detect_vaapi_card); then
+    ENCODER_DEVICE=$(detect_vaapi_card)
+    if [[ -z "$ENCODER_DEVICE" ]]; then
       echo "❌ No usable VAAPI device found. Falling back to libx265."
       ENCODER="libx265"
       ENCODER_DEVICE=""
@@ -120,6 +128,10 @@ for i in "${!RES_NAMES[@]}"; do
   if [[ "$ENCODER" == "hevc_vaapi" ]] && [[ -n "$ENCODER_DEVICE" ]]; then
     VIDEO_FORMAT="format=nv12,hwupload,scale_vaapi=w=$WIDTH:h=-2"
     ENCODER_MODIFIER=(-init_hw_device vaapi=va:$ENCODER_DEVICE -filter_hw_device va)
+  fi
+
+  if [[ "$ENCODER" == "hevc_qsv" ]]; then
+    VIDEO_FORMAT="format=nv12,hwupload=extra_hw_frames=64,scale_qsv=w=$WIDTH:h=-2"
   fi
 
   if [[ "$ENCODER" == "hevc_nvenc" ]]; then

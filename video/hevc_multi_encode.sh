@@ -175,7 +175,7 @@ for i in "${!RES_NAMES[@]}"; do
     "${ENCODER_MODIFIER[@]}" \
     -i "$INPUT" \
     -vf "$VIDEO_FORMAT" \
-    -map 0 \
+    -map 0 -avoid_negative_ts make_zero \
     -c:v "$ENCODER" \
     "${VIDEO_QUALITY_ARGUMENT[@]}" \
     -tag:v hvc1 \

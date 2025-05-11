@@ -114,47 +114,55 @@ set_encoder() {
 
 set_encoder
 
-echo "🧠 Using encoder: $ENCODER (quality: $QUALITY)"
 TOTAL_START=$(date +%s)
 # 🔁 Loop through target resolutions
 for i in "${!RES_NAMES[@]}"; do
   RES="${RES_NAMES[$i]}"
   WIDTH="${RES_WIDTHS[$i]}"
+  SOURCE="$INPUT"
+  if [[ "$RES" == "1080p" ]]; then
+    RES_QUALITY=20
+    RES_PRESET=slow
+  else
+    RES_QUALITY="$QUALITY"  # falls back to global input/default
+    RES_PRESET=fast
+    if [[ -f "$DIR/${BASENAME} - 1080p HEVC.mkv" ]]; then
+      SOURCE="$DIR/${BASENAME} - 1080p HEVC.mkv"
+    fi
+  fi
+
   OUTPUT="$DIR/${BASENAME} - ${RES} HEVC.mkv"
   VIDEO_FORMAT="scale=$WIDTH:-2"
   ENCODER_MODIFIER=()
-  VIDEO_QUALITY_ARGUMENT=(-q:v "$QUALITY")
+  VIDEO_QUALITY_ARGUMENT=(-q:v "$RES_QUALITY")
   PIX_FMT_ARGUMENT=()
 
+  echo "🧠 Using encoder: $ENCODER (quality: $RES_QUALITY, preset: $RES_PRESET) for $RES with Input: $SOURCE"
 
   # HDR Tone Mapping
-  # HDR_TRANSFER=$(ffprobe -v error -select_streams v:0 -show_entries stream=color_transfer -of csv=p=0 "$INPUT")
+  # HDR_TRANSFER=$(ffprobe -v error -select_streams v:0 -show_entries stream=color_transfer -of csv=p=0 "$SOURCE")
   # if [[ "$HDR_TRANSFER" == "smpte2084" || "$HDR_TRANSFER" == "arib-std-b67" ]]; then
   #   VIDEO_FORMAT="zscale=transfer=bt709:primaries=bt709:matrix=bt709,scale=$WIDTH:-2"
   # fi
 
   if [[ "$ENCODER" == "hevc_videotoolbox" ]]; then
     PIX_FMT_ARGUMENT=(-pix_fmt yuv420p)
-    VIDEO_QUALITY_ARGUMENT+=(-preset medium)
+    VIDEO_QUALITY_ARGUMENT+=(-preset "$RES_PRESET")
   fi
 
   if [[ "$ENCODER" == "hevc_vaapi" ]] && [[ -n "$ENCODER_DEVICE" ]]; then
-    VIDEO_QUALITY_ARGUMENT=(-rc_mode CQP -global_quality "$QUALITY")
+    VIDEO_QUALITY_ARGUMENT=(-rc_mode CQP -global_quality "$RES_QUALITY")
     VIDEO_FORMAT="format=nv12,hwupload,scale_vaapi=w=$WIDTH:h=-2"
     ENCODER_MODIFIER=(-init_hw_device vaapi=va:$ENCODER_DEVICE -filter_hw_device va)
-  fi
-
-  if [[ "$ENCODER" == "hevc_qsv" ]]; then
+  elif [[ "$ENCODER" == "hevc_qsv" ]]; then
     VIDEO_FORMAT="format=nv12,hwupload=extra_hw_frames=64,scale_qsv=w=$WIDTH:h=-2"
-    VIDEO_QUALITY_ARGUMENT+=(-preset veryslow)
-  fi
-
-  if [[ "$ENCODER" == "hevc_nvenc" ]]; then
-    VIDEO_QUALITY_ARGUMENT=(-cq "$QUALITY" -preset slow)
-  fi
-
-  if [[ "$ENCODER" == "libx265" ]]; then
-    VIDEO_QUALITY_ARGUMENT=(-crf "$QUALITY" -preset slow)
+    VIDEO_QUALITY_ARGUMENT+=(-preset "$RES_PRESET")
+  elif [[ "$ENCODER" == "hevc_nvenc" ]]; then
+    VIDEO_QUALITY_ARGUMENT=(-cq "$RES_QUALITY" -preset "$RES_PRESET")
+  elif [[ "$ENCODER" == "hevc_amf" ]]; then
+    VIDEO_QUALITY_ARGUMENT=(-cq "$RES_QUALITY" -quality quality -preset "$RES_PRESET")
+  elif [[ "$ENCODER" == "libx265" ]]; then
+    VIDEO_QUALITY_ARGUMENT=(-crf "$RES_QUALITY" -preset "$RES_PRESET")
   fi
 
   # Skip upscaling
@@ -186,7 +194,7 @@ for i in "${!RES_NAMES[@]}"; do
   if ! ffmpeg -hide_banner -y \
     -fflags +genpts -copyts -start_at_zero -avoid_negative_ts make_zero -copytb 1 \
     "${ENCODER_MODIFIER[@]}" \
-    -i "$INPUT" \
+    -i "$SOURCE" \
     -vf "$VIDEO_FORMAT" \
     -map 0 \
     -c:v "$ENCODER" \

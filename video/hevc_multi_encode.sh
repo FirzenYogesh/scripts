@@ -124,9 +124,18 @@ for i in "${!RES_NAMES[@]}"; do
   VIDEO_FORMAT="scale=$WIDTH:-2"
   ENCODER_MODIFIER=()
   VIDEO_QUALITY_ARGUMENT=(-q:v "$QUALITY")
+  PIX_FMT_ARGUMENT=()
+
+
+  # HDR Tone Mapping
+  # HDR_TRANSFER=$(ffprobe -v error -select_streams v:0 -show_entries stream=color_transfer -of csv=p=0 "$INPUT")
+  # if [[ "$HDR_TRANSFER" == "smpte2084" || "$HDR_TRANSFER" == "arib-std-b67" ]]; then
+  #   VIDEO_FORMAT="zscale=transfer=bt709:primaries=bt709:matrix=bt709,scale=$WIDTH:-2"
+  # fi
 
   if [[ "$ENCODER" == "hevc_videotoolbox" ]]; then
-    ENCODER_MODIFIER=(-pix_fmt yuv420p)
+    PIX_FMT_ARGUMENT=(-pix_fmt yuv420p)
+    VIDEO_QUALITY_ARGUMENT+=(-preset medium)
   fi
 
   if [[ "$ENCODER" == "hevc_vaapi" ]] && [[ -n "$ENCODER_DEVICE" ]]; then
@@ -182,6 +191,7 @@ for i in "${!RES_NAMES[@]}"; do
     -map 0 \
     -c:v "$ENCODER" \
     "${VIDEO_QUALITY_ARGUMENT[@]}" \
+    "${PIX_FMT_ARGUMENT[@]}" \
     -tag:v hvc1 \
     -c:a copy \
     -c:s copy \
@@ -194,7 +204,7 @@ for i in "${!RES_NAMES[@]}"; do
 
   END_TIME=$(date +%s)
   FILESIZE=$(du -h "$OUTPUT" | cut -f1)
-  
+
   echo "⏱️ Encoding time: $((END_TIME - START_TIME)) seconds"
   echo "📦 File size: $FILESIZE"
   echo "✅ Done: $OUTPUT"

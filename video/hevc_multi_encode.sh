@@ -177,7 +177,7 @@ for i in "${!RES_NAMES[@]}"; do
     -c:v "$ENCODER" \
     "${VIDEO_QUALITY_ARGUMENT[@]}" \
     -tag:v hvc1 \
-    -c:a aac -b:a 96k \
+    -c:a copy \
     -c:s copy \
     -movflags +faststart \
     "$OUTPUT"; then

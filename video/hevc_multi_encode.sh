@@ -171,11 +171,11 @@ for i in "${!RES_NAMES[@]}"; do
   START_TIME=$(date +%s)
 
   if ! ffmpeg -hide_banner -y \
-    -fflags +genpts -copyts -start_at_zero \
+    -fflags +genpts -copyts -start_at_zero -avoid_negative_ts make_zero -copytb 1 \
     "${ENCODER_MODIFIER[@]}" \
     -i "$INPUT" \
     -vf "$VIDEO_FORMAT" \
-    -map 0 -avoid_negative_ts make_zero \
+    -map 0 \
     -c:v "$ENCODER" \
     "${VIDEO_QUALITY_ARGUMENT[@]}" \
     -tag:v hvc1 \

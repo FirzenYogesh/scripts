@@ -115,15 +115,44 @@ set_encoder() {
 set_encoder
 
 TOTAL_START=$(date +%s)
+INPUT_BITRATE=$(ffprobe -v error -select_streams v:0 -show_entries stream=bit_rate -of default=nw=1:nk=1 "$INPUT" | awk '{print int($1 / 1000)}')
+[[ -z "$INPUT_BITRATE" || "$INPUT_BITRATE" -lt 1 ]] && INPUT_BITRATE=6000
+(( INPUT_BITRATE > 20000 )) && INPUT_BITRATE=20000
+
 # 🔁 Loop through target resolutions
 for i in "${!RES_NAMES[@]}"; do
   RES="${RES_NAMES[$i]}"
   WIDTH="${RES_WIDTHS[$i]}"
   SOURCE="$INPUT"
+
+  # 🔧 Resolution-based bitrate targets (used for all bitrate-based encoders)
   if [[ "$RES" == "1080p" ]]; then
     RES_QUALITY=20
     RES_PRESET=slow
+
+    # 75% of source bitrate, capped at 8000 kbps
+    RES_BITRATE=$(( INPUT_BITRATE * 75 / 100 ))
+    (( RES_BITRATE > 8000 )) && RES_BITRATE=8000
+  elif [[ "$RES" == "720p" ]]; then
+    # 55% of source bitrate, capped at 5000 kbps
+    RES_BITRATE=$(( INPUT_BITRATE * 55 / 100 ))
+    (( RES_BITRATE > 5000 )) && RES_BITRATE=5000
   else
+    # 40% of source bitrate, capped at 2800 kbps
+    RES_BITRATE=$(( INPUT_BITRATE * 40 / 100 ))
+    (( RES_BITRATE > 2800 )) && RES_BITRATE=2800
+  fi
+
+  # Sanity minimum to prevent blocky output
+  (( RES_BITRATE < 1000 )) && RES_BITRATE=1000
+
+  RES_MAXRATE=$(( RES_BITRATE + 800 ))
+  RES_BUFSIZE=$(( RES_BITRATE * 2 ))
+
+  echo "📊 Target bitrate for $RES: ${RES_BITRATE}k"
+
+
+  if [[ "$RES" != "1080p" ]]; then
     RES_QUALITY="$QUALITY"  # falls back to global input/default
     RES_PRESET=fast
     if [[ -f "$DIR/${BASENAME} - 1080p HEVC.mkv" ]]; then
@@ -148,17 +177,15 @@ for i in "${!RES_NAMES[@]}"; do
   if [[ "$ENCODER" == "hevc_videotoolbox" ]]; then
     PIX_FMT_ARGUMENT=(-pix_fmt yuv420p)
     VIDEO_QUALITY_ARGUMENT+=(-preset "$RES_PRESET")
-  fi
-
-  if [[ "$ENCODER" == "hevc_vaapi" ]] && [[ -n "$ENCODER_DEVICE" ]]; then
+  elif [[ "$ENCODER" == "hevc_vaapi" ]] && [[ -n "$ENCODER_DEVICE" ]]; then
     VIDEO_QUALITY_ARGUMENT=(-rc_mode CQP -global_quality "$RES_QUALITY")
     VIDEO_FORMAT="format=nv12,hwupload,scale_vaapi=w=$WIDTH:h=-2"
     ENCODER_MODIFIER=(-init_hw_device vaapi=va:"$ENCODER_DEVICE" -filter_hw_device va)
   elif [[ "$ENCODER" == "hevc_qsv" ]]; then
     VIDEO_FORMAT="format=nv12,hwupload=extra_hw_frames=64,scale_qsv=w=$WIDTH:h=-2"
-    VIDEO_QUALITY_ARGUMENT+=(-preset "$RES_PRESET")
+     VIDEO_QUALITY_ARGUMENT=(-b:v "${RES_BITRATE}k" -maxrate "${RES_MAXRATE}k" -bufsize "${RES_BUFSIZE}k" -preset "$RES_PRESET")
   elif [[ "$ENCODER" == "hevc_nvenc" ]]; then
-    VIDEO_QUALITY_ARGUMENT=(-cq "$RES_QUALITY" -preset "$RES_PRESET")
+    VIDEO_QUALITY_ARGUMENT=(-b:v "${RES_BITRATE}k" -maxrate "${RES_MAXRATE}k" -bufsize "${RES_BUFSIZE}k" -preset "$RES_PRESET")
   elif [[ "$ENCODER" == "hevc_amf" ]]; then
     VIDEO_QUALITY_ARGUMENT=(-cq "$RES_QUALITY" -quality quality -preset "$RES_PRESET")
   elif [[ "$ENCODER" == "libx265" ]]; then

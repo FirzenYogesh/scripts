@@ -170,6 +170,7 @@ for i in "${!RES_NAMES[@]}"; do
   START_TIME=$(date +%s)
 
   if ! ffmpeg -hide_banner -y \
+    -fflags +genpts \
     "${ENCODER_MODIFIER[@]}" \
     -i "$INPUT" \
     -vf "$VIDEO_FORMAT" \

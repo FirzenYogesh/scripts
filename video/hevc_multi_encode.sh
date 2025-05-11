@@ -153,7 +153,7 @@ for i in "${!RES_NAMES[@]}"; do
   if [[ "$ENCODER" == "hevc_vaapi" ]] && [[ -n "$ENCODER_DEVICE" ]]; then
     VIDEO_QUALITY_ARGUMENT=(-rc_mode CQP -global_quality "$RES_QUALITY")
     VIDEO_FORMAT="format=nv12,hwupload,scale_vaapi=w=$WIDTH:h=-2"
-    ENCODER_MODIFIER=(-init_hw_device vaapi=va:$ENCODER_DEVICE -filter_hw_device va)
+    ENCODER_MODIFIER=(-init_hw_device vaapi=va:"$ENCODER_DEVICE" -filter_hw_device va)
   elif [[ "$ENCODER" == "hevc_qsv" ]]; then
     VIDEO_FORMAT="format=nv12,hwupload=extra_hw_frames=64,scale_qsv=w=$WIDTH:h=-2"
     VIDEO_QUALITY_ARGUMENT+=(-preset "$RES_PRESET")

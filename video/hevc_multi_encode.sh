@@ -168,7 +168,7 @@ for i in "${!RES_NAMES[@]}"; do
 
   START_TIME=$(date +%s)
 
-  ffmpeg -hide_banner -y \
+  if ! ffmpeg -hide_banner -y \
     "${ENCODER_MODIFIER[@]}" \
     -i "$INPUT" \
     -vf "$VIDEO_FORMAT" \
@@ -179,7 +179,11 @@ for i in "${!RES_NAMES[@]}"; do
     -c:a aac -b:a 96k \
     -c:s copy \
     -movflags +faststart \
-    "$OUTPUT"
+    "$OUTPUT"; then
+    echo "❌ FFmpeg failed to encode $RES. Cleaning up stale output file."
+    rm -f "$OUTPUT"
+    continue
+  fi
 
   END_TIME=$(date +%s)
   FILESIZE=$(du -h "$OUTPUT" | cut -f1)

@@ -126,6 +126,7 @@ for i in "${!RES_NAMES[@]}"; do
   VIDEO_QUALITY_ARGUMENT=(-q:v "$QUALITY")
 
   if [[ "$ENCODER" == "hevc_vaapi" ]] && [[ -n "$ENCODER_DEVICE" ]]; then
+    VIDEO_QUALITY_ARGUMENT=(-rc_mode CQP -global_quality "$QUALITY")
     VIDEO_FORMAT="format=nv12,hwupload,scale_vaapi=w=$WIDTH:h=-2"
     ENCODER_MODIFIER=(-init_hw_device vaapi=va:$ENCODER_DEVICE -filter_hw_device va)
   fi

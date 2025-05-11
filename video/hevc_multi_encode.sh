@@ -133,6 +133,7 @@ for i in "${!RES_NAMES[@]}"; do
 
   if [[ "$ENCODER" == "hevc_qsv" ]]; then
     VIDEO_FORMAT="format=nv12,hwupload=extra_hw_frames=64,scale_qsv=w=$WIDTH:h=-2"
+    VIDEO_QUALITY_ARGUMENT+=(-preset veryslow)
   fi
 
   if [[ "$ENCODER" == "hevc_nvenc" ]]; then
